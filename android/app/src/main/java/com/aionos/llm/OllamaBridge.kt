@@ -9,6 +9,7 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -72,12 +73,17 @@ class OllamaBridge(
             )
         )
         try {
-            val response: ChatResponse = client.post("$host/v1/chat/completions") {
-                contentType(ContentType.Application.Json)
-                setBody(request)
-            }.body()
+            val response: ChatResponse = withTimeoutOrNull(timeoutMs) {
+                client.post("$host/v1/chat/completions") {
+                    contentType(ContentType.Application.Json)
+                    setBody(request)
+                }.body()
+            } ?: throw LLMException.GenerationFailed(TimeoutCancellationException("Request timed out after $timeoutMs ms"))
+            
             response.choices.firstOrNull()?.message?.content
                 ?: throw LLMException.InvalidResponse(IllegalStateException("Empty response"))
+        } catch (e: TimeoutCancellationException) {
+            throw LLMException.GenerationFailed(e)
         } catch (e: Exception) {
             if (e is LLMException) throw e
             throw LLMException.ServerUnreachable(host)

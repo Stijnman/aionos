@@ -12,7 +12,13 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-class AuditLog(context: Context) : SQLiteOpenHelper(
+/**
+ * SQLite-based audit log for tracking all agent actions.
+ * All data is stored locally on-device and never transmitted.
+ * 
+ * For better testability, use the constructor directly instead of relying on inheritance.
+ */
+class AuditLog private constructor(context: Context) : SQLiteOpenHelper(
     context, DATABASE_NAME, null, DATABASE_VERSION
 ) {
     companion object {
@@ -27,6 +33,34 @@ class AuditLog(context: Context) : SQLiteOpenHelper(
         const val COL_SUCCESS = "success"
         const val COL_ERROR = "error"
         const val COL_DURATION_MS = "duration_ms"
+
+        @Volatile
+        private var instance: AuditLog? = null
+
+        /**
+         * Get or create the singleton instance.
+         * For better testability, consider using DI (AppContainer) instead.
+         */
+        fun getInstance(context: Context): AuditLog {
+            return instance ?: synchronized(this) {
+                instance ?: AuditLog(context.applicationContext).also { instance = it }
+            }
+        }
+        
+        /**
+         * Reset the singleton instance. Useful for testing.
+         */
+        fun resetInstance() {
+            instance = null
+        }
+        
+        /**
+         * Create a new instance without using the singleton.
+         * Recommended for testing and dependency injection.
+         */
+        fun create(context: Context): AuditLog {
+            return AuditLog(context.applicationContext)
+        }
     }
 
     override fun onCreate(db: SQLiteDatabase) {

@@ -11,11 +11,13 @@ import kotlinx.coroutines.withContext
 /**
  * Vision fallback for when AccessibilityNodeInfo tree is empty or unhelpful.
  * Uses MediaPipe Object Detection to identify interactive elements from screenshots.
+ * Integrated with ScreenCaptureManager for automatic screenshot capture.
  */
 class VisionFallback(private val context: Context) {
 
     private var objectDetector: ObjectDetector? = null
     private var isInitialized = false
+    private val screenCaptureManager = ScreenCaptureManager(context)
 
     suspend fun initialize(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -49,6 +51,31 @@ class VisionFallback(private val context: Context) {
         }
     }
 
+    /**
+     * Captures the current screen and detects elements using vision.
+     * Requires MediaProjection permission to be granted.
+     */
+    suspend fun captureAndDetect(): Result<List<DetectedElement>> = withContext(Dispatchers.Default) {
+        runCatching {
+            val bitmap = screenCaptureManager.captureOnce().getOrThrow()
+            val elements = detectElements(bitmap)
+            bitmap.recycle()
+            elements
+        }
+    }
+
+    /**
+     * Sets up MediaProjection from activity result and captures screen.
+     */
+    fun setupProjection(resultCode: Int, data: android.content.Intent): Result<Unit> {
+        return screenCaptureManager.setProjectionResult(resultCode, data)
+    }
+
+    /**
+     * Creates intent for MediaProjection consent.
+     */
+    fun createConsentIntent() = screenCaptureManager.createConsentIntent()
+
     fun shouldUseVisionFallback(tree: String): Boolean {
         return tree.trim() == "<tree/>" ||
                (tree.contains("android.webkit.WebView") && tree.lines().size < 5)
@@ -58,6 +85,7 @@ class VisionFallback(private val context: Context) {
         objectDetector?.close()
         objectDetector = null
         isInitialized = false
+        screenCaptureManager.release()
     }
 
     data class DetectedElement(val label: String, val confidence: Float, val bounds: Rect)

@@ -31,8 +31,9 @@ class SafeActionExecutor(
             action.safetyTier == AgentAction.SafetyTier.TIER_4
     }
 
-    private val actionHistory = ArrayDeque<ActionRecord>(50)
+    private val actionHistory = ArrayDeque<ActionRecord>(200)
     private var lastTreeHash: Int = 0
+    private var consecutiveRepeats = 0
 
     data class ActionRecord(val action: AgentAction, val treeHash: Int, val timestamp: Long)
 
@@ -84,8 +85,10 @@ class SafeActionExecutor(
             val currentRoot = service.rootInActiveWindow
             val currentHash = treeParser.parse(currentRoot).hashCode()
             if (currentHash == lastTreeHash && action.safetyTier != AgentAction.SafetyTier.TIER_1) {
-                auditLog.record(action, result.isSuccess, error = "Warning: No state change detected", durationMs = System.currentTimeMillis() - startTime)
+                consecutiveRepeats++
+                auditLog.record(action, result.isSuccess, error = "Warning: No state change detected (repeat count: $consecutiveRepeats)", durationMs = System.currentTimeMillis() - startTime)
             } else {
+                consecutiveRepeats = 0
                 auditLog.record(action, result.isSuccess, durationMs = System.currentTimeMillis() - startTime)
             }
             lastTreeHash = currentHash
@@ -101,11 +104,19 @@ class SafeActionExecutor(
 
     private fun isStuckLoop(action: AgentAction): Boolean {
         if (actionHistory.size < 3) return false
+        
         val recent = actionHistory.takeLast(3)
         val sameAction = recent.all { it.action.javaClass == action.javaClass }
         val sameTree = recent.map { it.treeHash }.toSet().size == 1
         val rapidFire = recent.zipWithNext { a, b -> b.timestamp - a.timestamp < 5000 }.all { it }
-        return sameAction && sameTree && rapidFire
+        
+        if (sameAction && sameTree && rapidFire) {
+            consecutiveRepeats++
+            return consecutiveRepeats >= 2
+        } else {
+            consecutiveRepeats = 0
+            return false
+        }
     }
 
     private fun performTap(action: AgentAction.Tap): Result<String> {
@@ -197,28 +208,74 @@ class SafeActionExecutor(
     private fun findFocusedEditable(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
-        while (queue.isNotEmpty()) {
-            val node = queue.removeFirst()
-            if (node.isFocused && node.isEditable) return node
-            for (i in 0 until node.childCount) node.getChild(i)?.let { queue.add(it) }
+        var result: AccessibilityNodeInfo? = null
+        try {
+            while (queue.isNotEmpty()) {
+                val node = queue.removeFirst()
+                try {
+                    if (node.isFocused && node.isEditable) {
+                        result = node
+                        return result
+                    }
+                    for (i in 0 until node.childCount) {
+                        node.getChild(i)?.let { queue.add(it) }
+                    }
+                } finally {
+                    if (node !== root) node.recycle()
+                }
+            }
+        } finally {
+            while (queue.isNotEmpty()) {
+                val node = queue.removeFirst()
+                if (node !== root) node.recycle()
+            }
         }
-        return null
+        return result
     }
 
     private fun findScrollableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
-        while (queue.isNotEmpty()) {
-            val node = queue.removeFirst()
-            if (node.isScrollable) return node
-            for (i in 0 until node.childCount) node.getChild(i)?.let { queue.add(it) }
+        var result: AccessibilityNodeInfo? = null
+        try {
+            while (queue.isNotEmpty()) {
+                val node = queue.removeFirst()
+                try {
+                    if (node.isScrollable) {
+                        result = node
+                        return result
+                    }
+                    for (i in 0 until node.childCount) {
+                        node.getChild(i)?.let { queue.add(it) }
+                    }
+                } finally {
+                    if (node !== root) node.recycle()
+                }
+            }
+        } finally {
+            while (queue.isNotEmpty()) {
+                val node = queue.removeFirst()
+                if (node !== root) node.recycle()
+            }
         }
-        return null
+        return result
     }
 
     private fun collectText(node: AccessibilityNodeInfo, texts: MutableList<String>) {
         val text = (node.text ?: node.contentDescription)?.toString()?.trim()
         if (!text.isNullOrBlank() && node.isVisibleToUser) texts.add(text)
-        for (i in 0 until node.childCount) node.getChild(i)?.let { collectText(it, texts) }
+        try {
+            for (i in 0 until node.childCount) {
+                node.getChild(i)?.let { child ->
+                    try {
+                        collectText(child, texts)
+                    } finally {
+                        child.recycle()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
     }
 }

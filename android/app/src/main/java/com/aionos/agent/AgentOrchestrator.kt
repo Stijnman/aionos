@@ -12,6 +12,8 @@ import com.aionos.voice.VoiceInputManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Central orchestrator for the AionOS agent.
@@ -36,6 +38,9 @@ class AgentOrchestrator(
     val transcript: StateFlow<String> = _transcript
 
     private val actionHistory = mutableListOf<String>()
+    
+    // Mutex to prevent concurrent execution
+    private val executionMutex = Mutex()
 
     fun initialize() {
         llmBridge = when (prefs.llmProvider) {
@@ -46,61 +51,68 @@ class AgentOrchestrator(
     }
 
     fun executeIntent(userIntent: String, maxSteps: Int = 10) {
-        if (_state.value is AgentState.Running) return
-
         scope.launch {
-            _state.value = AgentState.Running(userIntent)
-            _transcript.value = ""
+            // Use mutex to prevent concurrent execution
+            if (!executionMutex.tryLock()) {
+                _transcript.value = "Agent is busy. Please wait."
+                return@launch
+            }
+            
+            executionMutex.withLock {
+                _state.value = AgentState.Running(userIntent)
+                _transcript.value = ""
 
-            try {
-                var steps = 0
-                var completed = false
+                try {
+                    var steps = 0
+                    var completed = false
 
-                while (steps < maxSteps && !completed) {
-                    steps++
+                    while (steps < maxSteps && !completed) {
+                        steps++
 
-                    val currentApp = service.rootInActiveWindow?.packageName?.toString() ?: "unknown"
-                    val uiTree = service.getCurrentTree()
+                        val currentApp = service.rootInActiveWindow?.packageName?.toString() ?: "unknown"
+                        val uiTree = service.getCurrentTree()
 
-                    val systemPrompt = buildSystemPrompt()
-                    val userPrompt = buildUserPrompt(userIntent, uiTree, currentApp, actionHistory)
-                    val fullPrompt = "$systemPrompt\n\n$userPrompt"
+                        val systemPrompt = buildSystemPrompt()
+                        val userPrompt = buildUserPrompt(userIntent, uiTree, currentApp, actionHistory)
+                        val fullPrompt = "$systemPrompt\n\n$userPrompt"
 
-                    val bridge = llmBridge ?: throw IllegalStateException("LLM not initialized")
-                    val response = bridge.generate(fullPrompt)
+                        val bridge = llmBridge ?: throw IllegalStateException("LLM not initialized")
+                        val response = bridge.generate(fullPrompt)
 
-                    val actions = actionParser.parse(response)
+                        val actions = actionParser.parse(response)
 
-                    when (val validation = actionParser.validate(actions)) {
-                        is ActionParser.ValidationResult.Invalid -> {
-                            _transcript.value += "\nValidation failed: ${validation.errors.joinToString()}"
-                            break
+                        when (val validation = actionParser.validate(actions)) {
+                            is ActionParser.ValidationResult.Invalid -> {
+                                _transcript.value += "\nValidation failed: ${validation.errors.joinToString()}"
+                                break
+                            }
+                            else -> {}
                         }
-                        else -> {}
-                    }
 
-                    if (actions.isEmpty()) {
-                        _transcript.value += "\nNo actions parsed from LLM response"
-                        break
-                    }
-
-                    for (action in actions) {
-                        val result = service.actionExecutor.execute(action)
-                        result.onSuccess { msg ->
-                            actionHistory.add("${action.javaClass.simpleName}: $msg")
-                            _transcript.value += "\n✓ $msg"
-                        }.onFailure { err ->
-                            actionHistory.add("${action.javaClass.simpleName}: FAILED - ${err.message}")
-                            _transcript.value += "\n✗ ${err.message}"
+                        if (actions.isEmpty()) {
+                            _transcript.value += "\nLLM returned no valid actions. Retrying..."
+                            delay(1000)
+                            continue
                         }
-                        if (action is AgentAction.Wait && action.millis > 2000) completed = true
+
+                        for (action in actions) {
+                            val result = service.actionExecutor.execute(action)
+                            result.onSuccess { msg ->
+                                actionHistory.add("${action.javaClass.simpleName}: $msg")
+                                _transcript.value += "\n✓ $msg"
+                            }.onFailure { err ->
+                                actionHistory.add("${action.javaClass.simpleName}: FAILED - ${err.message}")
+                                _transcript.value += "\n✗ ${err.message}"
+                            }
+                            if (action is AgentAction.Wait && action.millis > 2000) completed = true
+                        }
+                        delay(500)
                     }
-                    delay(500)
+                    _state.value = AgentState.Completed(_transcript.value)
+                } catch (e: Exception) {
+                    _state.value = AgentState.Error(e.message ?: "Unknown error")
+                    _transcript.value += "\nError: ${e.message}"
                 }
-                _state.value = AgentState.Completed(_transcript.value)
-            } catch (e: Exception) {
-                _state.value = AgentState.Error(e.message ?: "Unknown error")
-                _transcript.value += "\nError: ${e.message}"
             }
         }
     }

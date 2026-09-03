@@ -5,7 +5,13 @@ import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
-class EncryptedPrefs(context: Context) {
+/**
+ * Encrypted preferences storage using AndroidX Security.
+ * All settings are encrypted at rest with AES-256-GCM.
+ * 
+ * For better testability, use the create() method or DI (AppContainer) instead of the singleton.
+ */
+class EncryptedPrefs private constructor(context: Context) {
     companion object {
         const val PREFS_FILE = "aionos_secure_prefs"
         const val KEY_AGENT_ENABLED = "agent_enabled"
@@ -22,10 +28,29 @@ class EncryptedPrefs(context: Context) {
         @Volatile
         private var instance: EncryptedPrefs? = null
 
+        /**
+         * Get or create the singleton instance.
+         * For better testability, consider using DI (AppContainer) instead.
+         */
         fun getInstance(context: Context): EncryptedPrefs {
             return instance ?: synchronized(this) {
                 instance ?: EncryptedPrefs(context.applicationContext).also { instance = it }
             }
+        }
+        
+        /**
+         * Reset the singleton instance. Useful for testing.
+         */
+        fun resetInstance() {
+            instance = null
+        }
+        
+        /**
+         * Create a new instance without using the singleton.
+         * Recommended for testing and dependency injection.
+         */
+        fun create(context: Context): EncryptedPrefs {
+            return EncryptedPrefs(context.applicationContext)
         }
     }
 
