@@ -1,0 +1,14 @@
+# Android/Gradle
+.gradle/
+**/.gradle/
+**/build/
+local.properties
+*.iml
+.idea/
+.DS_Store
+
+# Local model and capture artifacts
+android/app/src/main/assets/models/
+android/app/src/main/assets/vosk-model/
+*.tflite
+*.bin

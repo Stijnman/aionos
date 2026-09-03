@@ -1,0 +1,3 @@
+AionOS is a local-first AI operating layer for Android. It turns your phone into an autonomous agent that understands natural language and executes UI tasks via Accessibility API.
+
+Privacy-first by design.

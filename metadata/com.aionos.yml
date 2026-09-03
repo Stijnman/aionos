@@ -1,0 +1,47 @@
+Categories:
+  - System
+  - Connectivity
+License: MIT
+SourceCode: https://github.com/Stijnman/aionos
+IssueTracker: https://github.com/Stijnman/aionos/issues
+
+Summary: Local AI agent for Android
+Description: |
+    AionOS is a local-first AI operating layer for Android.
+    It turns your phone into an autonomous agent that understands
+    natural language and executes UI tasks via Accessibility API.
+
+    **Privacy-first by design:**
+    - Default inference runs on-device or on your LAN (Ollama)
+    - Screen contents never leave the device without explicit toggle
+    - All actions are logged locally for review
+    - Encrypted settings storage with biometric lock support
+
+    **Features:**
+    - Voice and text command input
+    - Floating action bubble for quick access
+    - Tiered safety system with confirmation dialogs
+    - Stuck-loop detection and automatic escalation
+    - Plugin system for extensibility
+    - On-device speech recognition (Vosk)
+    - Vision fallback for WebViews (MediaPipe)
+
+    **Note:** Requires Accessibility Service permission.
+    This app is designed for power users who understand the
+    security implications of accessibility automation.
+
+RepoType: git
+Repo: https://github.com/Stijnman/aionos.git
+
+Builds:
+  - versionName: 0.1.0-alpha
+    versionCode: 1
+    commit: v0.1.0-alpha
+    subdir: android/app
+    gradle:
+      - fdroid
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: 0.1.0-alpha
+CurrentVersionCode: 1

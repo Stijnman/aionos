@@ -1,0 +1,1 @@
+Local AI agent for Android — private by default

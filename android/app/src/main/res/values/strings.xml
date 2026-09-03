@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AionOS</string>
+    <string name="accessibility_service_description">AionOS uses Accessibility API to understand your screen and perform actions you request via voice or text. No screen data leaves your device unless you explicitly enable a remote model. All actions are logged locally for your review.</string>
+    <string name="accessibility_service_label">AionOS Agent</string>
+    <string name="notification_channel_agent">Agent Status</string>
+    <string name="notification_channel_overlay">Overlay Bubble</string>
+    <string name="notification_agent_active">AionOS agent is active</string>
+    <string name="notification_agent_paused">AionOS agent is paused</string>
+    <string name="label_agent_status">Agent Status</string>
+    <string name="label_agent_active">Active</string>
+    <string name="label_agent_paused">Paused</string>
+    <string name="label_overlay_bubble">Floating Bubble</string>
+    <string name="label_emergency_stop">Emergency Stop</string>
+    <string name="label_settings">Settings</string>
+    <string name="label_audit_log">Audit Log</string>
+    <string name="label_dashboard">Dashboard</string>
+    <string name="label_llm_provider">LLM Provider</string>
+    <string name="label_ollama_host">Ollama Host</string>
+    <string name="label_ollama_model">Model Name</string>
+    <string name="label_confirm_destructive">Confirm destructive actions</string>
+    <string name="label_retention_days">Log retention (days)</string>
+    <string name="label_export_logs">Export Audit Log</string>
+    <string name="label_voice_input">Voice Input</string>
+    <string name="label_listening">Listening…</string>
+    <string name="label_tap_to_speak">Tap to speak</string>
+    <string name="dialog_enable_accessibility_title">Enable Accessibility Service</string>
+    <string name="dialog_enable_accessibility_message">AionOS needs Accessibility permissions to control your device. Please enable it in system settings.</string>
+    <string name="dialog_open_settings">Open Settings</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_confirm">Allow Once</string>
+    <string name="dialog_deny">Deny</string>
+    <string name="error_agent_disabled">Agent is paused. Enable in settings.</string>
+    <string name="error_stuck_loop">Stuck loop detected. Same action repeated with no state change.</string>
+    <string name="error_tier4_blocked">Action blocked by safety policy.</string>
+    <string name="error_no_active_window">No active window found.</string>
+    <string name="error_gesture_failed">Gesture dispatch failed.</string>
+    <string name="error_app_not_found">App not found.</string>
+    <string name="error_model_not_found">LLM model not found. Download a model to continue.</string>
+    <string name="error_server_unreachable">Cannot reach Ollama server. Check your LAN connection.</string>
+    <string name="empty_audit_log">No actions recorded yet.</string>
+    <string name="empty_plugins">No plugins installed.</string>
+    <string name="first_run_title">Welcome to AionOS</string>
+    <string name="first_run_message">AionOS is a local-first AI agent for Android. Your screen data stays on your device. Enable the agent to get started.</string>
+    <string name="first_run_button">Get Started</string>
+</resources>

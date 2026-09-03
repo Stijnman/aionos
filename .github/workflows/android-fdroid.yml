@@ -1,0 +1,47 @@
+name: Android F-Droid CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Make Gradle executable
+        run: chmod +x gradlew
+      - name: Run unit tests
+        run: ./gradlew testFdroidDebugUnitTest --stacktrace
+      - name: Run lint
+        run: ./gradlew lintFdroidDebug --stacktrace
+      - name: Assemble F-Droid debug APK
+        run: ./gradlew assembleFdroidDebug --stacktrace
+      - name: Upload APK and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aionos-fdroid-build
+          path: |
+            android/app/build/outputs/apk/fdroid/debug/*.apk
+            android/app/build/reports/**
+          if-no-files-found: warn
