@@ -1,0 +1,43 @@
+name: Auto-Sync with OpenRouter Integration
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**.kt'          # Kotlin files
+      - '**.md'          # Documentation
+      - '**.gradle'      # Build files
+      - '**.properties'  # Config files
+  workflow_dispatch:     # Manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for accurate commits
+
+      - name: Set Up Git
+        run: |
+          git config --global user.name "Emerald Parker"
+          git config --global user.email "emeraldparkerai@gmail.com"
+
+      - name: Detect Changes
+        id: changes
+        run: |
+          # Check for changes in OpenRouter-related files
+          git diff --name-only ${{ github.event.before }} ${{ github.sha }} > changed_files.txt
+          if grep -qE '\.(kt|md|gradle|properties)$' changed_files.txt; then
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and Push Changes
+        if: steps.changes.outputs.changes_detected == 'true'
+        run: |
+          git add .
+          git commit -m "Auto-sync: OpenRouter integration updates [${{ github.sha }}]"
+          git push origin main
