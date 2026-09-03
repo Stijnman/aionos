@@ -6,12 +6,12 @@ Local AI-powered operating layer for Android. Natural language to on-device acti
 
 ```
 User Input (Voice/Text) → Intent Parser → Local LLM (MediaPipe/Ollama)
-                                              ↓
-                    Action Executor ← Action Parser (JSON)
-                           ↓
-              [Kill Switch] [Safety Tiers] [Stuck Detection] [Audit Log]
-                           ↓
-                   Accessibility API (tap/scroll/type/open)
+                                               ↓
+                     Action Executor ← Action Parser (JSON)
+                            ↓
+               [Kill Switch] [Safety Tiers] [Stuck Detection] [Audit Log]
+                            ↓
+                    Accessibility API (tap/scroll/type/open)
 ```
 
 ## Modules
@@ -66,15 +66,39 @@ cd android
 - Vosk (optional, voice)
 - MediaPipe Tasks (optional, on-device LLM + vision)
 
+## CI/CD Pipeline
+
+Automated workflows for building, testing, and releasing:
+
+### Workflows
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| **Build** | Push to `main`/`develop`, PRs | Compiles app, catches errors |
+| **Test** | Push to `main`/`develop`, PRs | Unit tests + lint checks |
+| **Release** | Tags `v*`, manual trigger | Release APK/AAB + GitHub Release |
+
+### Quick Start
+
+**View workflows:** Go to [Actions](https://github.com/Stijnman/aionos/actions) tab
+
+**Create a release:**
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+**Documentation:** See [.github/CI-CD-SETUP.md](.github/CI-CD-SETUP.md)
+
 ## License
 
 MIT
 
 ## Implemented feature set
 
-The current alpha includes all eight continuation tasks. Screen capture uses an explicit MediaProjection consent flow and retains the captured bitmap in memory only. Audit logs can be exported as UTF-8 CSV through Android’s Storage Access Framework. Voice setup includes an HTTPS-only Vosk model downloader with progress callbacks and zip-slip protection. The dashboard now includes onboarding, a plugin scan and trigger screen, and biometric authentication before settings access.
+The current alpha includes all eight continuation tasks. Screen capture uses an explicit MediaProjection consent flow and retains the captured bitmap in memory only. Audit logs can be exported as [...]
 
-The project also includes deterministic unit coverage for `ActionParser` and the executor’s TIER_4 policy predicate, plus a GitHub Actions workflow at `.github/workflows/android-fdroid.yml` that runs F-Droid unit tests, lint, and APK assembly. The Gradle wrapper is included for reproducible CI and local builds.
+The project also includes deterministic unit coverage for `ActionParser` and the executor's TIER_4 policy predicate, plus a GitHub Actions workflow at `.github/workflows/android-fdroid.yml` that[...]
 
 ### Validation
 
