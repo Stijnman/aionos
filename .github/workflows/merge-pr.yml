@@ -1,0 +1,22 @@
+name: Auto-merge CI/CD Setup
+
+on:
+  workflow_dispatch:
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: setup/ci-cd-pipeline
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Merge branch to main
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git fetch origin main
+        git checkout main
+        git merge setup/ci-cd-pipeline --no-ff -m "merge: integrate CI/CD pipeline workflows"
+        git push origin main
