@@ -23,23 +23,74 @@ class VoiceInputManager(private val context: Context) {
     private var speechService: SpeechService? = null
     private var recognizer: Recognizer? = null
     private var model: Model? = null
+    private var isInitializing = false
 
     private val _state = MutableStateFlow<VoiceState>(VoiceState.Idle)
     val state: StateFlow<VoiceState> = _state
 
     private val _transcript = MutableStateFlow("")
     val transcript: StateFlow<String> = _transcript
+    
+    private val modelManager = VoskModelManager(context)
 
     fun initialize(modelPath: String = "${context.filesDir}/vosk-model"): Result<Unit> {
         return try {
             val modelDir = File(modelPath)
             if (!modelDir.exists()) {
-                return Result.failure(IllegalStateException("Vosk model not found at $modelPath. Download from alphacephei.com/vosk/models"))
+                // Auto-download if not exists
+                return autoDownloadModel()
             }
             model = Model(modelPath)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+    
+    /**
+     * Attempts to auto-download the Vosk model if not already installed.
+     * Returns success if model is now available, failure otherwise.
+     */
+    suspend fun autoDownloadModel(): Result<Unit> = withContext(Dispatchers.IO) {
+        if (modelManager.isInstalled) {
+            return@withContext Result.success(Unit)
+        }
+        
+        if (isInitializing) {
+            return@withContext Result.failure(IllegalStateException("Model download already in progress"))
+        }
+        
+        isInitializing = true
+        _state.value = VoiceState.Downloading
+        
+        try {
+            modelManager.download("https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip")
+                .map { 
+                    model = Model(modelManager.modelDirectory.path)
+                    _state.value = VoiceState.Idle
+                    Unit
+                }
+        } catch (e: Exception) {
+            _state.value = VoiceState.Error(e.message ?: "Download failed")
+            Result.failure(e)
+        } finally {
+            isInitializing = false
+        }
+    }
+    
+    /**
+     * Initializes voice input, auto-downloading model if needed.
+     * This is the recommended initialization method.
+     */
+    suspend fun initializeWithAutoDownload(): Result<Unit> {
+        return if (model != null) {
+            Result.success(Unit)
+        } else {
+            autoDownloadModel().also {
+                if (it.isSuccess) {
+                    model = Model(modelManager.modelDirectory.path)
+                }
+            }
         }
     }
 
@@ -101,6 +152,7 @@ class VoiceInputManager(private val context: Context) {
     sealed class VoiceState {
         object Idle : VoiceState()
         object Listening : VoiceState()
+        object Downloading : VoiceState()
         data class Error(val message: String) : VoiceState()
     }
 }

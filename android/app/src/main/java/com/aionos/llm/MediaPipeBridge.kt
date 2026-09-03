@@ -3,7 +3,9 @@ package com.aionos.llm
 import android.content.Context
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 
 /**
@@ -53,7 +55,11 @@ class MediaPipeBridge(
         val inference = llmInference
             ?: throw LLMException.GenerationFailed(IllegalStateException("MediaPipe not initialized"))
         try {
-            inference.generateResponse(prompt)
+            withTimeoutOrNull(60000) {
+                inference.generateResponse(prompt)
+            } ?: throw LLMException.GenerationFailed(TimeoutCancellationException("MediaPipe generation timed out after 60s"))
+        } catch (e: TimeoutCancellationException) {
+            throw LLMException.GenerationFailed(e)
         } catch (e: Exception) {
             throw LLMException.GenerationFailed(e)
         }
