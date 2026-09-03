@@ -4,46 +4,103 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
-import androidx.fragment.app.FragmentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.fragment.app.FragmentActivity
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicNone
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aionos.audit.AuditLog
 import com.aionos.audit.AuditLogExporter
 import com.aionos.security.BiometricGate
 import com.aionos.security.EncryptedPrefs
-import com.aionos.plugin.PluginLoader
-import com.aionos.vision.ScreenCaptureManager
-import com.aionos.voice.VoskModelManager
 import com.aionos.service.AgentAccessibilityService
 import com.aionos.service.OverlayBubbleService
 import com.aionos.ui.AgentViewModel
 import com.aionos.ui.ConfirmationDialog
+import com.aionos.ui.EnhancedSettingsScreen
+import com.aionos.ui.LanguageSettingsScreen
 import com.aionos.ui.OnboardingDialog
+import com.aionos.ui.PluginScreen
 import com.aionos.ui.theme.AionosTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : FragmentActivity() {
-    private val viewModel: AgentViewModel by viewModels()
+    private val viewModel: AgentViewModel by viewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AgentAccessibilityService.instance?.let { viewModel.bindService(it) }
+        
+        // Handle widget quick commands
+        if (intent?.hasExtra("widget_command") == true) {
+            val command = intent.getStringExtra("widget_command") ?: ""
+            viewModel.submitCommand(command)
+        }
+        
+        // Handle shortcut actions
+        if (intent?.hasExtra("shortcut_action") == true) {
+            val action = intent.getStringExtra("shortcut_action")
+            when (action) {
+                "voice" -> viewModel.startVoice()
+                "text" -> { /* Show text input */ }
+                "audit" -> { /* Navigate to audit */ }
+                "settings" -> { /* Navigate to settings */ }
+            }
+        }
+        
         setContent {
             AionosTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -64,7 +121,17 @@ fun AionosApp(viewModel: AgentViewModel) {
     val activity = context as? FragmentActivity
     val agentState by viewModel.agentState.collectAsState()
     val transcript by viewModel.transcript.collectAsState()
-    val tabs = listOf("Dashboard", "Audit Log", "Settings", "Plugins")
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    
+    // Enhanced tabs with new features
+    val tabs = listOf(
+        "Dashboard" to Icons.Default.Dashboard,
+        "Audit Log" to Icons.Default.History,
+        "Settings" to Icons.Default.Settings,
+        "Plugins" to Icons.Default.Extension,
+        "Languages" to Icons.Default.Language
+    )
 
     if (showOnboarding) {
         OnboardingDialog {
@@ -104,34 +171,39 @@ fun AionosApp(viewModel: AgentViewModel) {
         },
         bottomBar = {
             NavigationBar {
-                tabs.forEachIndexed { index, title ->
+                tabs.forEachIndexed { index, (label, icon) ->
                     NavigationBarItem(
-                        icon = {
-                            when (index) {
-                                0 -> Icon(Icons.Default.Dashboard, contentDescription = null)
-                                1 -> Icon(Icons.Default.History, contentDescription = null)
-                                2 -> Icon(Icons.Default.Settings, contentDescription = null)
-                                else -> Icon(Icons.Default.Extension, contentDescription = null)
-                            }
-                        },
-                        label = { Text(title) },
+                        icon = { Icon(icon, contentDescription = null) },
+                        label = { Text(label) },
                         selected = selectedTab == index,
                         onClick = {
                             if (index == 2 && activity != null) {
-                                BiometricGate(activity).authenticate { unlocked -> if (unlocked) selectedTab = index }
-                            } else selectedTab = index
+                                // Settings requires biometric authentication
+                                val gate = BiometricGate(activity)
+                                if (prefs.isBiometricLockEnabled && gate.canAuthenticate()) {
+                                    gate.authenticate { unlocked ->
+                                        if (unlocked) selectedTab = index
+                                    }
+                                } else {
+                                    selectedTab = index
+                                }
+                            } else {
+                                selectedTab = index
+                            }
                         }
                     )
                 }
             }
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             when (selectedTab) {
                 0 -> DashboardScreen(viewModel, prefs, transcript)
                 1 -> AuditLogScreen()
-                2 -> SettingsScreen(prefs)
+                2 -> EnhancedSettingsScreen(prefs) { selectedTab = 0 }
                 3 -> PluginScreen()
+                4 -> LanguageSettingsScreen { selectedTab = 0 }
             }
         }
     }
@@ -141,15 +213,6 @@ fun AionosApp(viewModel: AgentViewModel) {
 fun DashboardScreen(viewModel: AgentViewModel, prefs: EncryptedPrefs, transcript: String) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val captureManager = remember { ScreenCaptureManager(context) }
-    var captureStatus by remember { mutableStateOf<String?>(null) }
-    val captureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            captureManager.setProjectionResult(result.resultCode, result.data!!).onSuccess {
-                scope.launch { captureStatus = captureManager.captureOnce().fold({ "Screenshot captured in memory (${it.width}×${it.height})" }, { "Capture failed: ${it.message}" }) }
-            }.onFailure { captureStatus = "Capture permission failed: ${it.message}" }
-        } else captureStatus = "Screenshot permission was cancelled"
-    }
     var isAgentEnabled by remember { mutableStateOf(prefs.isAgentEnabled) }
     var isOverlayEnabled by remember { mutableStateOf(prefs.isOverlayEnabled) }
     var showAccessibilityDialog by remember { mutableStateOf(false) }
@@ -255,21 +318,15 @@ fun DashboardScreen(viewModel: AgentViewModel, prefs: EncryptedPrefs, transcript
             }
         }
 
-        captureStatus?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { captureLauncher.launch(captureManager.createConsentIntent()) }, modifier = Modifier.weight(1f)) {
-                Icon(Icons.Default.CameraAlt, contentDescription = null)
-                Spacer(Modifier.width(4.dp))
-                Text("Capture")
-            }
-            Button(
-                onClick = {
+            OutlinedButton(
+                onClick = { 
                     prefs.emergencyStop()
                     isAgentEnabled = false
                     isOverlayEnabled = false
                     viewModel.emergencyStop()
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Default.Stop, contentDescription = null)
@@ -387,166 +444,7 @@ fun AuditEntryCard(entry: AuditLog.AuditEntry) {
     }
 }
 
-@Composable
-fun SettingsScreen(prefs: EncryptedPrefs) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val exporter = remember { AuditLogExporter(context, AuditLog(context)) }
-    val modelManager = remember { VoskModelManager(context) }
-    var modelStatus by remember { mutableStateOf(if (modelManager.isInstalled) "Vosk model installed" else "Vosk model not installed") }
-    var exportStatus by remember { mutableStateOf<String?>(null) }
-    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
-        if (uri != null) scope.launch {
-            exportStatus = exporter.exportCsv(uri).fold({ "Exported $it bytes" }, { "Export failed: ${it.message}" })
-        }
-    }
-    var llmProvider by remember { mutableStateOf(prefs.llmProvider) }
-    var ollamaHost by remember { mutableStateOf(prefs.ollamaHost) }
-    var ollamaModel by remember { mutableStateOf(prefs.ollamaModel) }
-    var confirmTier3 by remember { mutableStateOf(prefs.confirmTier3) }
-    var retentionDays by remember { mutableStateOf(prefs.auditRetentionDays.toString()) }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item { Text("LLM Configuration", style = MaterialTheme.typography.titleMedium) }
-        item {
-            var expanded by remember { mutableStateOf(false) }
-            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-                TextField(
-                    value = llmProvider,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("LLM Provider") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth()
-                )
-                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    listOf("ollama", "mediapipe").forEach { provider ->
-                        DropdownMenuItem(
-                            text = { Text(provider) },
-                            onClick = {
-                                llmProvider = provider
-                                prefs.llmProvider = provider
-                                expanded = false
-                            }
-                        )
-                    }
-                }
-            }
-        }
-        item {
-            if (llmProvider == "ollama") {
-                OutlinedTextField(
-                    value = ollamaHost,
-                    onValueChange = { ollamaHost = it; prefs.ollamaHost = it },
-                    label = { Text("Ollama Host") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = ollamaModel,
-                    onValueChange = { ollamaModel = it; prefs.ollamaModel = it },
-                    label = { Text("Model Name") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-        item {
-            Divider()
-            Spacer(Modifier.height(8.dp))
-            Text("Safety", style = MaterialTheme.typography.titleMedium)
-        }
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Confirm destructive actions")
-                Switch(
-                    checked = confirmTier3,
-                    onCheckedChange = { confirmTier3 = it; prefs.confirmTier3 = it }
-                )
-            }
-        }
-        item {
-            Divider()
-            Spacer(Modifier.height(8.dp))
-            Text("Offline Voice", style = MaterialTheme.typography.titleMedium)
-            Text(modelStatus, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(8.dp))
-            Button(onClick = {
-                scope.launch {
-                    modelStatus = "Downloading Vosk model..."
-                    modelStatus = modelManager.download("https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip")
-                        .fold({ "Vosk model installed" }, { "Model download failed: ${it.message}" })
-                }
-            }, enabled = !modelManager.isInstalled) { Text("Download English voice model") }
-        }
-        item {
-            Divider()
-            Spacer(Modifier.height(8.dp))
-            Text("Audit Log", style = MaterialTheme.typography.titleMedium)
-        }
-        item {
-            OutlinedTextField(
-                value = retentionDays,
-                onValueChange = {
-                    retentionDays = it
-                    it.toIntOrNull()?.let { days -> prefs.auditRetentionDays = days }
-                },
-                label = { Text("Retention (days)") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        item {
-            Button(
-                onClick = { exportLauncher.launch("aionos-audit-${System.currentTimeMillis()}.csv") },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.Download, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Export Audit Log")
-            }
-            exportStatus?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-        }
-    }
-}
-
-@Composable
-fun PluginScreen() {
-    val context = LocalContext.current
-    val loader = remember { PluginLoader(context) }
-    var plugins by remember { mutableStateOf<List<PluginLoader.Plugin>>(emptyList()) }
-    var message by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(Unit) { plugins = loader.scanForPlugins() }
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Installed Plugins", style = MaterialTheme.typography.titleLarge)
-            OutlinedButton(onClick = { plugins = loader.scanForPlugins() }) { Text("Rescan") }
-        }
-        if (plugins.isEmpty()) Text("No compatible AionOS plugins found.")
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(plugins) { plugin ->
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(plugin.manifest.name, style = MaterialTheme.typography.titleMedium)
-                        Text("Version ${plugin.manifest.version} · ${plugin.packageName}", style = MaterialTheme.typography.bodySmall)
-                        plugin.manifest.actions.forEach { action ->
-                            OutlinedButton(onClick = {
-                                message = if (loader.executePluginAction(action.name, emptyMap())) {
-                                    "Executed ${action.name}"
-                                } else {
-                                    "Plugin action failed or is unavailable"
-                                }
-                            }) { Text(action.name) }
-                        }
-                    }
-                }
-            }
-        }
-        message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-    }
-}
+// Import CardDefaults
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.TextButton

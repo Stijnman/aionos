@@ -1,13 +1,41 @@
 package com.aionos.audit
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 
+/**
+ * Exports audit log data using Storage Access Framework (SAF).
+ * SAF provides a system picker UI that lets users choose where to save files
+ * without requiring any storage permissions.
+ */
 class AuditLogExporter(private val context: Context, private val auditLog: AuditLog) {
+    
+    /**
+     * Creates an intent for the user to select where to export the CSV file.
+     * Uses Storage Access Framework (SAF) which doesn't require any permissions.
+     * 
+     * @param suggestedFilename The suggested filename (without .csv extension)
+     * @return Intent to launch with ActivityResultContracts
+     */
+    fun createExportIntent(suggestedFilename: String = "aionos-audit-export"): Intent {
+        return Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            type = "text/csv"
+            putExtra(Intent.EXTRA_TITLE, "$suggestedFilename.csv")
+            addCategory(Intent.CATEGORY_OPENABLE)
+        }
+    }
+    
+    /**
+     * ActivityResultContract for export operations.
+     * Use with rememberLauncherForActivityResult in Compose.
+     */
+    val exportDocumentContract = ActivityResultContracts.CreateDocument("text/csv")
     
     /**
      * Exports audit log as CSV to the specified URI.
@@ -41,6 +69,12 @@ class AuditLogExporter(private val context: Context, private val auditLog: Audit
     }
     
     /**
+     * Exports audit log to a SAF URI with progress tracking.
+     * This is the recommended method for new code.
+     */
+    fun exportToUri(uri: Uri): Flow<ExportProgress> = exportCsv(uri)
+    
+    /**
      * Simple suspend function for backward compatibility.
      * For new code, use the Flow-based exportCsv() for progress tracking.
      */
@@ -61,5 +95,13 @@ class AuditLogExporter(private val context: Context, private val auditLog: Audit
         data class WritingFile(val bytesWritten: Long) : ExportProgress()
         data class Completed(val totalBytes: Long) : ExportProgress()
         data class Failed(val error: String) : ExportProgress()
+    }
+    
+    /**
+     * Companion object for static utility methods.
+     */
+    companion object {
+        const val MIME_TYPE_CSV = "text/csv"
+        const val DEFAULT_FILENAME = "aionos-audit-export"
     }
 }
