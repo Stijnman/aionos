@@ -20,11 +20,13 @@ jobs:
         distribution: 'temurin'
         cache: gradle
     
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v3
     - name: Grant execute permission for gradlew
       run: chmod +x android/gradlew
     
     - name: Run unit tests
-      run: cd android && ./gradlew testDebugUnitTest
+      run: cd android && ./gradlew testFdroidDebugUnitTest
     
     - name: Upload test results
       if: always()
@@ -54,11 +56,13 @@ jobs:
         distribution: 'temurin'
         cache: gradle
     
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v3
     - name: Grant execute permission for gradlew
       run: chmod +x android/gradlew
     
     - name: Run Android Lint
-      run: cd android && ./gradlew lint
+      run: cd android && ./gradlew lintFdroidDebug
       continue-on-error: true
     
     - name: Upload lint results

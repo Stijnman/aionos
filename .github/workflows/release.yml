@@ -20,27 +20,29 @@ jobs:
         distribution: 'temurin'
         cache: gradle
     
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v3
     - name: Grant execute permission for gradlew
       run: chmod +x android/gradlew
     
     - name: Build release APK
-      run: cd android && ./gradlew assembleRelease
+      run: cd android && ./gradlew assembleFdroidRelease
     
     - name: Build release AAB (for Play Store)
-      run: cd android && ./gradlew bundleRelease
+      run: cd android && ./gradlew bundleFdroidRelease
     
     - name: Upload APK artifacts
       uses: actions/upload-artifact@v4
       with:
         name: release-apk
-        path: android/app/build/outputs/apk/release/
+        path: android/app/build/outputs/apk/fdroid/release/
         retention-days: 30
     
     - name: Upload AAB artifacts
       uses: actions/upload-artifact@v4
       with:
         name: release-aab
-        path: android/app/build/outputs/bundle/release/
+        path: android/app/build/outputs/bundle/fdroidRelease/
         retention-days: 30
     
     - name: Create GitHub Release
@@ -48,8 +50,8 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          android/app/build/outputs/apk/release/*.apk
-          android/app/build/outputs/bundle/release/*.aab
+          android/app/build/outputs/apk/fdroid/release/*.apk
+          android/app/build/outputs/bundle/fdroidRelease/*.aab
         draft: true
         prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}
       env:
