@@ -61,7 +61,7 @@ class AuditLog(context: Context) : SQLiteOpenHelper(
         val values = ContentValues().apply {
             put(COL_TIMESTAMP, System.currentTimeMillis())
             put(COL_ACTION_TYPE, action.javaClass.simpleName)
-            put(COL_ACTION_DETAIL, action.toString().take(500))
+            put(COL_ACTION_DETAIL, safeActionDetail(action))
             put(COL_TARGET_APP, targetApp)
             put(COL_SUCCESS, if (success) 1 else 0)
             put(COL_ERROR, error?.take(500))
@@ -137,6 +137,11 @@ class AuditLog(context: Context) : SQLiteOpenHelper(
 
     suspend fun clearAll() = withContext(Dispatchers.IO) {
         writableDatabase.delete(TABLE_ACTIONS, null, null)
+    }
+
+    private fun safeActionDetail(action: AgentAction): String = when (action) {
+        is AgentAction.Type -> "Type(text=<redacted>, password=${action.isPasswordField}, nodeText=${action.nodeText?.take(80)})"
+        else -> action.toString().take(500)
     }
 
     private fun formatTimestamp(ts: Long): String =

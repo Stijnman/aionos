@@ -12,8 +12,8 @@ android {
         applicationId = "com.aionos"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0-alpha"
+        versionCode = 2
+        versionName = "0.2.0-alpha"
     }
 
     buildTypes {
@@ -86,9 +86,8 @@ dependencies {
     // Optional: Vosk on-device speech recognition
     implementation("com.alphacephei:vosk-android:0.3.47")
 
-    // Optional: MediaPipe Tasks (on-device LLM + vision)
-    // implementation("com.google.mediapipe:tasks-genai:0.10.9")
-    // implementation("com.google.mediapipe:tasks-vision:0.10.9")
+    // Optional on-device LLM remains opt-in; vision fallback is enabled for this build.
+    implementation("com.google.mediapipe:tasks-vision:0.10.9")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")

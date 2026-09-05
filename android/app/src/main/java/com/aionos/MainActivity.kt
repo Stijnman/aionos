@@ -403,6 +403,7 @@ fun SettingsScreen(prefs: EncryptedPrefs) {
     var llmProvider by remember { mutableStateOf(prefs.llmProvider) }
     var ollamaHost by remember { mutableStateOf(prefs.ollamaHost) }
     var ollamaModel by remember { mutableStateOf(prefs.ollamaModel) }
+    var hostStatus by remember { mutableStateOf<String?>(null) }
     var confirmTier3 by remember { mutableStateOf(prefs.confirmTier3) }
     var retentionDays by remember { mutableStateOf(prefs.auditRetentionDays.toString()) }
 
@@ -440,7 +441,14 @@ fun SettingsScreen(prefs: EncryptedPrefs) {
             if (llmProvider == "ollama") {
                 OutlinedTextField(
                     value = ollamaHost,
-                    onValueChange = { ollamaHost = it; prefs.ollamaHost = it },
+                    onValueChange = {
+                        ollamaHost = it
+                        val result = com.aionos.security.NetworkPolicy.validateOllamaHost(it)
+                        hostStatus = result.exceptionOrNull()?.message
+                        if (result.isSuccess) prefs.ollamaHost = result.getOrThrow()
+                    },
+                    isError = hostStatus != null,
+                    supportingText = { hostStatus?.let { Text(it) } },
                     label = { Text("Ollama Host") },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -536,11 +544,10 @@ fun PluginScreen() {
                         Text("Version ${plugin.manifest.version} · ${plugin.packageName}", style = MaterialTheme.typography.bodySmall)
                         plugin.manifest.actions.forEach { action ->
                             OutlinedButton(onClick = {
-                                message = if (loader.executePluginAction(action.name, emptyMap())) {
-                                    "Executed ${action.name}"
-                                } else {
-                                    "Plugin action failed or is unavailable"
-                                }
+                                message = loader.executePluginAction(plugin, action.name, emptyMap()).fold(
+                                    { "Executed ${action.name}" },
+                                    { "Plugin action failed: ${it.message}" }
+                                )
                             }) { Text(action.name) }
                         }
                     }

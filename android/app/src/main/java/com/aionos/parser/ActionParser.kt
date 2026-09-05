@@ -1,6 +1,7 @@
 package com.aionos.parser
 
 import com.aionos.action.AgentAction
+import com.aionos.security.ActionPolicy
 import kotlinx.serialization.json.*
 
 class ActionParser {
@@ -19,13 +20,13 @@ class ActionParser {
         val actionType = obj["action"]?.jsonPrimitive?.content ?: return null
         return when (actionType.lowercase()) {
             "tap" -> AgentAction.Tap(
-                x = obj["x"]?.jsonPrimitive?.int ?: 0,
-                y = obj["y"]?.jsonPrimitive?.int ?: 0,
+                x = obj["x"]?.jsonPrimitive?.int ?: return null,
+                y = obj["y"]?.jsonPrimitive?.int ?: return null,
                 nodeText = obj["nodeText"]?.jsonPrimitive?.content
             )
             "long_press" -> AgentAction.LongPress(
-                x = obj["x"]?.jsonPrimitive?.int ?: 0,
-                y = obj["y"]?.jsonPrimitive?.int ?: 0,
+                x = obj["x"]?.jsonPrimitive?.int ?: return null,
+                y = obj["y"]?.jsonPrimitive?.int ?: return null,
                 nodeText = obj["nodeText"]?.jsonPrimitive?.content
             )
             "type" -> AgentAction.Type(
@@ -38,10 +39,10 @@ class ActionParser {
                 amount = obj["amount"]?.jsonPrimitive?.int ?: 500
             )
             "swipe" -> AgentAction.Swipe(
-                startX = obj["startX"]?.jsonPrimitive?.int ?: 0,
-                startY = obj["startY"]?.jsonPrimitive?.int ?: 0,
-                endX = obj["endX"]?.jsonPrimitive?.int ?: 0,
-                endY = obj["endY"]?.jsonPrimitive?.int ?: 0
+                startX = obj["startX"]?.jsonPrimitive?.int ?: return null,
+                startY = obj["startY"]?.jsonPrimitive?.int ?: return null,
+                endX = obj["endX"]?.jsonPrimitive?.int ?: return null,
+                endY = obj["endY"]?.jsonPrimitive?.int ?: return null
             )
             "open_app" -> AgentAction.OpenApp(
                 packageName = obj["packageName"]?.jsonPrimitive?.content ?: "",
@@ -73,19 +74,7 @@ class ActionParser {
     }
 
     fun validate(actions: List<AgentAction>): ValidationResult {
-        val errors = mutableListOf<String>()
-        for (action in actions) {
-            when {
-                action.safetyTier == AgentAction.SafetyTier.TIER_4 ->
-                    errors.add("Blocked TIER_4 action: ${action.javaClass.simpleName}")
-                action is AgentAction.Tap && (action.x < 0 || action.y < 0) ->
-                    errors.add("Invalid tap coordinates: (${action.x}, ${action.y})")
-                action is AgentAction.Type && action.text.length > 1000 ->
-                    errors.add("Text input too long: ${action.text.length} chars")
-                action is AgentAction.OpenApp && action.packageName.isBlank() ->
-                    errors.add("OpenApp action missing package name")
-            }
-        }
+        val errors = actions.flatMap(ActionPolicy::validate)
         return if (errors.isEmpty()) ValidationResult.Valid else ValidationResult.Invalid(errors)
     }
 

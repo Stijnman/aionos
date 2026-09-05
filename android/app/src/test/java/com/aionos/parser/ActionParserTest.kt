@@ -14,9 +14,10 @@ class ActionParserTest {
         assertEquals(listOf(AgentAction.Tap(540, 1200), AgentAction.Scroll(AgentAction.Direction.UP)), actions)
     }
 
-    @Test fun rejectsMalformedJsonAndUnknownActions() {
+    @Test fun rejectsMalformedJsonUnknownAndIncompleteActions() {
         assertTrue(parser.parse("not-json").isEmpty())
         assertTrue(parser.parse("[{\"action\":\"install_apk\"}]").isEmpty())
+        assertTrue(parser.parse("[{\"action\":\"tap\",\"x\":10}]").isEmpty())
     }
 
     @Test fun validatesBlockedAndUnsafeInputs() {

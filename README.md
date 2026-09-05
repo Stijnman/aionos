@@ -87,3 +87,11 @@ From `android/`, run:
 ```
 
 Android SDK components must be installed locally or supplied by the CI runner. The Vosk model remains opt-in and is downloaded only after the user taps the download button in protected settings.
+
+## 0.2.0 alpha improvements
+
+The 0.2.0 alpha adds a centralized `ActionPolicy` preflight layer. It rejects TIER_4 actions and bounds coordinates, text input, scroll requests, wait durations, and Android package names before any Accessibility API call. Password and typed-text contents are redacted from audit details. Ollama endpoints are validated before encrypted persistence, and embedded credentials are rejected.
+
+Vision fallback now has a confidence-gated proposal layer. Detected elements must meet the confidence threshold and fall within the captured display before a tap proposal can be created; the proposal still passes through the normal executor safety path. Plugin dispatch requires an explicitly selected loaded plugin, a declared action, and declared parameter names. Release packaging now includes the missing XML theme and valid icon resources, and the F-Droid metadata is updated to version `0.2.0-alpha`.
+
+Additional regression tests cover action bounds, parser completeness, vision confidence, and network endpoint validation. Local configuration checks pass in the current environment. Full APK and unit-test execution requires an installed Android SDK; the GitHub Actions workflow provides the reproducible Android build environment.

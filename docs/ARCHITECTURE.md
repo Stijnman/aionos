@@ -38,3 +38,11 @@
 - Silent background surveillance
 - Cloud training on user screen content
 - Bypassing device lock / banking 2FA without explicit UX
+
+## Defensive execution pipeline
+
+Every parsed action passes through `ActionPolicy` before it reaches `SafeActionExecutor`. The policy rejects TIER_4 actions, incomplete or out-of-range coordinates, excessive text, invalid Android package names, oversized scroll requests, and waits longer than 30 seconds. The executor records policy failures in the local audit log and checks the encrypted kill switch before any Android API call.
+
+Vision fallback is intentionally proposal-only. `VisionActionMapper` requires a confidence of at least 0.80 and verifies that the proposed tap center is inside the captured display. A proposal still follows the normal safety and confirmation path; the vision layer never dispatches gestures directly.
+
+Plugin actions are explicitly targeted to a loaded plugin, must be declared in that plugin’s manifest, and may only include declared parameter names. Ollama endpoints are validated before encrypted persistence: only HTTP/HTTPS hosts without embedded credentials are accepted. Screen captures are held in memory and are not uploaded or persisted by the capture coordinator.

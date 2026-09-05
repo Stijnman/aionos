@@ -25,6 +25,9 @@ Description: |
     - Plugin system for extensibility
     - On-device speech recognition (Vosk)
     - Vision fallback for WebViews (MediaPipe)
+    - Confidence-gated vision tap proposals
+    - HTTPS and credential validation for Ollama hosts
+    - Strict action bounds for coordinates, waits, scrolling, and text
 
     **Note:** Requires Accessibility Service permission.
     This app is designed for power users who understand the
@@ -34,14 +37,14 @@ RepoType: git
 Repo: https://github.com/Stijnman/aionos.git
 
 Builds:
-  - versionName: 0.1.0-alpha
-    versionCode: 1
-    commit: v0.1.0-alpha
+  - versionName: 0.2.0-alpha
+    versionCode: 2
+    commit: v0.2.0-alpha
     subdir: android/app
     gradle:
       - fdroid
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 0.1.0-alpha
-CurrentVersionCode: 1
+CurrentVersion: 0.2.0-alpha
+CurrentVersionCode: 2

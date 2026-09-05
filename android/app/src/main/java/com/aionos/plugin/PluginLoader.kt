@@ -34,21 +34,24 @@ class PluginLoader(private val context: Context) {
 
     fun getLoadedPlugins(): List<Plugin> = loadedPlugins.toList()
 
-    fun executePluginAction(actionName: String, params: Map<String, String>): Boolean {
-        for (plugin in loadedPlugins) {
-            val action = plugin.manifest.actions.find { it.name == actionName }
-            if (action != null) {
-                val intent = android.content.Intent("com.aionos.plugin.ACTION_EXECUTE").apply {
-                    `package` = plugin.packageName
-                    putExtra("action_name", actionName)
-                    for ((key, value) in params) putExtra(key, value)
-                }
-                context.sendBroadcast(intent)
-                return true
-            }
+    fun executePluginAction(plugin: Plugin, actionName: String, params: Map<String, String>): Result<Unit> = runCatching {
+        require(loadedPlugins.any { it.packageName == plugin.packageName }) { "Plugin is not loaded" }
+        val action = plugin.manifest.actions.firstOrNull { it.name == actionName }
+            ?: error("Action is not declared by this plugin")
+        require(params.keys.all { it in action.params }) { "Undeclared plugin parameter" }
+        val intent = android.content.Intent("com.aionos.plugin.ACTION_EXECUTE").apply {
+            `package` = plugin.packageName
+            putExtra("action_name", actionName)
+            params.forEach { (key, value) -> putExtra(key, value.take(1000)) }
         }
-        return false
+        context.sendBroadcast(intent)
     }
+
+    @Deprecated("Use the explicitly targeted overload")
+    fun executePluginAction(actionName: String, params: Map<String, String>): Boolean =
+        loadedPlugins.firstNotNullOfOrNull { plugin ->
+            executePluginAction(plugin, actionName, params).getOrNull()?.let { true }
+        } ?: false
 
     @Serializable
     data class PluginManifest(

@@ -49,7 +49,11 @@ class EncryptedPrefs(context: Context) {
 
     var ollamaHost: String
         get() = prefs.getString(KEY_OLLAMA_HOST, "http://192.168.1.1:11434") ?: "http://192.168.1.1:11434"
-        set(value) = prefs.edit().putString(KEY_OLLAMA_HOST, value).apply()
+        set(value) {
+            NetworkPolicy.validateOllamaHost(value).onSuccess { normalized ->
+                prefs.edit().putString(KEY_OLLAMA_HOST, normalized).apply()
+            }
+        }
 
     var ollamaModel: String
         get() = prefs.getString(KEY_OLLAMA_MODEL, "llama3.2") ?: "llama3.2"

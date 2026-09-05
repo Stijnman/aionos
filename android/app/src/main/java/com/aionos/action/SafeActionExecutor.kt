@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.view.accessibility.AccessibilityNodeInfo
 import com.aionos.audit.AuditLog
 import com.aionos.parser.AccessibilityTreeParser
+import com.aionos.security.ActionPolicy
 import com.aionos.security.EncryptedPrefs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -38,6 +39,12 @@ class SafeActionExecutor(
 
     suspend fun execute(action: AgentAction): Result<String> = withContext(Dispatchers.Main) {
         val startTime = System.currentTimeMillis()
+
+        val policyErrors = ActionPolicy.validate(action)
+        if (policyErrors.isNotEmpty()) {
+            auditLog.record(action, false, error = policyErrors.joinToString("; "))
+            return@withContext Result.failure(SecurityException(policyErrors.joinToString("; ")))
+        }
 
         if (!prefs.isAgentEnabled) {
             auditLog.record(action, false, error = "Agent disabled by kill switch")
