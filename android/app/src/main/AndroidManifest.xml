@@ -45,7 +45,11 @@
         <service
             android:name=".service.OverlayBubbleService"
             android:exported="false"
-            android:foregroundServiceType="specialUse" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="user_initiated_accessibility_overlay" />
+        </service>
 
     </application>
 </manifest>

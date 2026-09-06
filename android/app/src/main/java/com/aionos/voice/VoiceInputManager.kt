@@ -36,6 +36,8 @@ class VoiceInputManager(private val context: Context) {
             if (!modelDir.exists()) {
                 return Result.failure(IllegalStateException("Vosk model not found at $modelPath. Download from alphacephei.com/vosk/models"))
             }
+            if (model != null) return Result.success(Unit)
+            model?.close()
             model = Model(modelPath)
             Result.success(Unit)
         } catch (e: Exception) {
@@ -75,9 +77,14 @@ class VoiceInputManager(private val context: Context) {
         }
     }
 
+    fun clearTranscript() {
+        _transcript.value = ""
+    }
+
     fun stopListening() {
         speechService?.stop()
         speechService = null
+        recognizer?.close()
         recognizer = null
         _state.value = VoiceState.Idle
     }
@@ -86,6 +93,7 @@ class VoiceInputManager(private val context: Context) {
         stopListening()
         model?.close()
         model = null
+        clearTranscript()
         scope.cancel()
     }
 

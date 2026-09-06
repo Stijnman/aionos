@@ -24,8 +24,16 @@ class PluginLoader(private val context: Context) {
                 val manifestStream = resources.assets.open("aionos-plugin/manifest.json")
                 val manifestJson = manifestStream.bufferedReader().use { it.readText() }
                 val manifest = json.decodeFromString<PluginManifest>(manifestJson)
+                require(manifest.package_name == app.packageName) { "Plugin manifest package mismatch" }
+                require(manifest.name.length in 1..120 && manifest.version.length in 1..60) { "Invalid plugin identity" }
+                require(manifest.actions.size <= 50) { "Too many plugin actions" }
+                require(manifest.actions.all { it.name.matches(ACTION_NAME) && it.params.size <= 50 }) {
+                    "Invalid plugin action declaration"
+                }
                 plugins.add(Plugin(manifest, app.packageName, app.loadIcon(pm)))
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+                // Invalid or incompatible plugins are ignored and never made executable.
+            }
         }
         loadedPlugins.clear()
         loadedPlugins.addAll(plugins)
@@ -38,7 +46,10 @@ class PluginLoader(private val context: Context) {
         require(loadedPlugins.any { it.packageName == plugin.packageName }) { "Plugin is not loaded" }
         val action = plugin.manifest.actions.firstOrNull { it.name == actionName }
             ?: error("Action is not declared by this plugin")
+        require(actionName.matches(ACTION_NAME)) { "Invalid plugin action name" }
         require(params.keys.all { it in action.params }) { "Undeclared plugin parameter" }
+        require(params.size <= action.params.size) { "Too many plugin parameters" }
+        require(params.values.all { it.length <= 1000 }) { "Plugin parameter is too large" }
         val intent = android.content.Intent("com.aionos.plugin.ACTION_EXECUTE").apply {
             `package` = plugin.packageName
             putExtra("action_name", actionName)
@@ -52,6 +63,10 @@ class PluginLoader(private val context: Context) {
         loadedPlugins.firstNotNullOfOrNull { plugin ->
             executePluginAction(plugin, actionName, params).getOrNull()?.let { true }
         } ?: false
+
+    companion object {
+        private val ACTION_NAME = Regex("[A-Za-z][A-Za-z0-9_.-]{0,63}")
+    }
 
     @Serializable
     data class PluginManifest(

@@ -56,7 +56,7 @@ class SafeActionExecutor(
             return@withContext Result.failure(SecurityException("Action blocked by safety policy: ${action.javaClass.simpleName}"))
         }
 
-        if (action.safetyTier == AgentAction.SafetyTier.TIER_3 && prefs.confirmTier3) {
+        if (action.safetyTier == AgentAction.SafetyTier.TIER_3 || action.requiresConfirmation) {
             val confirmed = withTimeoutOrNull(30000) { onConfirmationRequired(action) } ?: false
             if (!confirmed) {
                 auditLog.record(action, false, error = "User denied confirmation")
@@ -139,27 +139,35 @@ class SafeActionExecutor(
         val root = service.rootInActiveWindow ?: return Result.failure(IllegalStateException("No active window"))
         val focusedNode = findFocusedEditable(root)
             ?: return Result.failure(IllegalStateException("No focused editable field found"))
-        val arguments = Bundle().apply {
-            putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, action.text)
+        return try {
+            val arguments = Bundle().apply {
+                putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, action.text)
+            }
+            val success = focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+            if (success) Result.success("Text input completed (${action.text.length} characters)")
+            else Result.failure(IllegalStateException("Failed to type text"))
+        } finally {
+            focusedNode.recycle()
         }
-        val success = focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
-        return if (success) Result.success("Typed "${action.text.take(20)}${if (action.text.length > 20) "..." else ""}"")
-        else Result.failure(IllegalStateException("Failed to type text"))
     }
 
     private fun performScroll(action: AgentAction.Scroll): Result<String> {
         val root = service.rootInActiveWindow ?: return Result.failure(IllegalStateException("No active window"))
         val scrollable = findScrollableNode(root)
             ?: return Result.failure(IllegalStateException("No scrollable container found"))
-        val scrollAction = when (action.direction) {
-            AgentAction.Direction.UP -> AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
-            AgentAction.Direction.DOWN -> AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
-            AgentAction.Direction.LEFT -> AccessibilityNodeInfo.ACTION_SCROLL_LEFT
-            AgentAction.Direction.RIGHT -> AccessibilityNodeInfo.ACTION_SCROLL_RIGHT
+        return try {
+            val scrollAction = when (action.direction) {
+                AgentAction.Direction.UP -> AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+                AgentAction.Direction.DOWN -> AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
+                AgentAction.Direction.LEFT -> AccessibilityNodeInfo.ACTION_SCROLL_LEFT
+                AgentAction.Direction.RIGHT -> AccessibilityNodeInfo.ACTION_SCROLL_RIGHT
+            }
+            val success = scrollable.performAction(scrollAction)
+            if (success) Result.success("Scrolled ${action.direction}")
+            else Result.failure(IllegalStateException("Scroll failed"))
+        } finally {
+            scrollable.recycle()
         }
-        val success = scrollable.performAction(scrollAction)
-        return if (success) Result.success("Scrolled ${action.direction}")
-        else Result.failure(IllegalStateException("Scroll failed"))
     }
 
     private fun performSwipe(action: AgentAction.Swipe): Result<String> {
@@ -201,31 +209,37 @@ class SafeActionExecutor(
         return Result.success("Waited ${action.millis}ms")
     }
 
-    private fun findFocusedEditable(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        val queue = ArrayDeque<AccessibilityNodeInfo>()
-        queue.add(root)
-        while (queue.isNotEmpty()) {
-            val node = queue.removeFirst()
-            if (node.isFocused && node.isEditable) return node
-            for (i in 0 until node.childCount) node.getChild(i)?.let { queue.add(it) }
+    private fun findFocusedEditable(root: AccessibilityNodeInfo): AccessibilityNodeInfo? =
+        findNode(root, recycleNode = false) { it.isFocused && it.isEditable }
+
+    private fun findScrollableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? =
+        findNode(root, recycleNode = false) { it.isScrollable }
+
+    private fun findNode(
+        node: AccessibilityNodeInfo,
+        recycleNode: Boolean,
+        predicate: (AccessibilityNodeInfo) -> Boolean
+    ): AccessibilityNodeInfo? {
+        if (predicate(node)) return node
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            val match = findNode(child, recycleNode = true, predicate)
+            if (match != null) {
+                if (recycleNode) node.recycle()
+                return match
+            }
         }
+        if (recycleNode) node.recycle()
         return null
     }
 
-    private fun findScrollableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        val queue = ArrayDeque<AccessibilityNodeInfo>()
-        queue.add(root)
-        while (queue.isNotEmpty()) {
-            val node = queue.removeFirst()
-            if (node.isScrollable) return node
-            for (i in 0 until node.childCount) node.getChild(i)?.let { queue.add(it) }
-        }
-        return null
-    }
-
-    private fun collectText(node: AccessibilityNodeInfo, texts: MutableList<String>) {
+    private fun collectText(node: AccessibilityNodeInfo, texts: MutableList<String>, recycleNode: Boolean = false) {
         val text = (node.text ?: node.contentDescription)?.toString()?.trim()
-        if (!text.isNullOrBlank() && node.isVisibleToUser) texts.add(text)
-        for (i in 0 until node.childCount) node.getChild(i)?.let { collectText(it, texts) }
+        if (!text.isNullOrBlank() && node.isVisibleToUser) texts.add(text.take(500))
+        for (i in 0 until node.childCount) {
+            node.getChild(i)?.let { collectText(it, texts, recycleNode = true) }
+        }
+        if (recycleNode) node.recycle()
     }
+
 }

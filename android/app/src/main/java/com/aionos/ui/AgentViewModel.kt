@@ -31,13 +31,19 @@ class AgentViewModel : ViewModel() {
 
     fun bindService(service: AgentAccessibilityService) {
         if (orchestrator == null) {
-            orchestrator = AgentOrchestrator(service.applicationContext, service).apply {
-                initialize()
-                service.confirmationCallback = { action ->
-                    pendingAction = action
-                    showConfirmation = true
-                    waitForConfirmation()
+            try {
+                orchestrator = AgentOrchestrator(service.applicationContext, service).apply {
+                    initialize()
+                    service.confirmationCallback = { action ->
+                        pendingAction = action
+                        showConfirmation = true
+                        waitForConfirmation()
+                    }
                 }
+            } catch (error: Exception) {
+                _agentState.value = AgentState.Error(error.message ?: "Provider configuration is invalid")
+                orchestrator = null
+                return
             }
             viewModelScope.launch {
                 orchestrator?.state?.collect { state ->
@@ -58,11 +64,21 @@ class AgentViewModel : ViewModel() {
 
     fun submitCommand(command: String) {
         _textInput.value = command
-        orchestrator?.executeIntent(command)
+        val activeOrchestrator = orchestrator
+        if (activeOrchestrator == null) {
+            _agentState.value = AgentState.Error("Accessibility service is not connected")
+            return
+        }
+        activeOrchestrator.executeIntent(command)
     }
 
     fun startVoice() {
-        orchestrator?.startVoiceCommand()
+        val activeOrchestrator = orchestrator
+        if (activeOrchestrator == null) {
+            _agentState.value = AgentState.Error("Accessibility service is not connected")
+            return
+        }
+        activeOrchestrator.startVoiceCommand()
     }
 
     fun stopVoice() {
@@ -77,6 +93,12 @@ class AgentViewModel : ViewModel() {
     fun denyAction() {
         confirmationResult = false
         showConfirmation = false
+    }
+
+    fun refreshConfiguration() {
+        orchestrator?.destroy()
+        orchestrator = null
+        AgentAccessibilityService.instance?.let { bindService(it) }
     }
 
     fun cancel() {

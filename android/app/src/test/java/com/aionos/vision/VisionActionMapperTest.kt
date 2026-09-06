@@ -15,4 +15,9 @@ class VisionActionMapperTest {
         val action = VisionActionMapper.proposeTap(element, 1080, 1920).getOrThrow()
         assertTrue(action.x in 0 until 1080 && action.y in 0 until 1920)
     }
+
+    @Test fun rejectsHighConfidenceNonInteractiveObject() {
+        val element = VisionFallback.DetectedElement("dog", 0.99f, Rect(0, 0, 100, 100))
+        assertTrue(VisionActionMapper.proposeTap(element, 1080, 1920).isFailure)
+    }
 }

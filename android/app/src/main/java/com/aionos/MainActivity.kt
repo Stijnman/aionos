@@ -9,7 +9,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.fragment.app.FragmentActivity
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.*
@@ -23,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.aionos.audit.AuditLog
 import com.aionos.audit.AuditLogExporter
@@ -30,6 +30,8 @@ import com.aionos.security.BiometricGate
 import com.aionos.security.EncryptedPrefs
 import com.aionos.plugin.PluginLoader
 import com.aionos.vision.ScreenCaptureManager
+import com.aionos.vision.VisionCoordinator
+import com.aionos.vision.VisionFallback
 import com.aionos.voice.VoskModelManager
 import com.aionos.service.AgentAccessibilityService
 import com.aionos.service.OverlayBubbleService
@@ -51,6 +53,11 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        AgentAccessibilityService.instance?.let { viewModel.bindService(it) }
     }
 }
 
@@ -130,7 +137,7 @@ fun AionosApp(viewModel: AgentViewModel) {
             when (selectedTab) {
                 0 -> DashboardScreen(viewModel, prefs, transcript)
                 1 -> AuditLogScreen()
-                2 -> SettingsScreen(prefs)
+                2 -> SettingsScreen(prefs, viewModel)
                 3 -> PluginScreen()
             }
         }
@@ -142,11 +149,30 @@ fun DashboardScreen(viewModel: AgentViewModel, prefs: EncryptedPrefs, transcript
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val captureManager = remember { ScreenCaptureManager(context) }
+    val visionCoordinator = remember { VisionCoordinator(VisionFallback(context)) }
     var captureStatus by remember { mutableStateOf<String?>(null) }
+    DisposableEffect(Unit) {
+        onDispose {
+            captureManager.release()
+            visionCoordinator.close()
+        }
+    }
     val captureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             captureManager.setProjectionResult(result.resultCode, result.data!!).onSuccess {
-                scope.launch { captureStatus = captureManager.captureOnce().fold({ "Screenshot captured in memory (${it.width}×${it.height})" }, { "Capture failed: ${it.message}" }) }
+                scope.launch {
+                    val captured = captureManager.captureOnce()
+                    if (captured.isSuccess) {
+                        val bitmap = captured.getOrThrow()
+                        val proposals = visionCoordinator.proposeTaps(bitmap)
+                        captureStatus = proposals.fold(
+                            { taps -> "Captured locally; ${taps.size} bounded vision proposal(s) generated. Nothing was executed." },
+                            { error -> "Vision analysis failed: ${error.message}" }
+                        )
+                    } else {
+                        captureStatus = "Capture failed: ${captured.exceptionOrNull()?.message}"
+                    }
+                }
             }.onFailure { captureStatus = "Capture permission failed: ${it.message}" }
         } else captureStatus = "Screenshot permission was cancelled"
     }
@@ -388,7 +414,7 @@ fun AuditEntryCard(entry: AuditLog.AuditEntry) {
 }
 
 @Composable
-fun SettingsScreen(prefs: EncryptedPrefs) {
+fun SettingsScreen(prefs: EncryptedPrefs, viewModel: AgentViewModel) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val exporter = remember { AuditLogExporter(context, AuditLog(context)) }
@@ -403,8 +429,10 @@ fun SettingsScreen(prefs: EncryptedPrefs) {
     var llmProvider by remember { mutableStateOf(prefs.llmProvider) }
     var ollamaHost by remember { mutableStateOf(prefs.ollamaHost) }
     var ollamaModel by remember { mutableStateOf(prefs.ollamaModel) }
+    var openRouterApiKey by remember { mutableStateOf(prefs.openRouterApiKey) }
+    var openRouterModel by remember { mutableStateOf(prefs.openRouterModel) }
+    var remoteConsent by remember { mutableStateOf(prefs.remoteProviderConsent) }
     var hostStatus by remember { mutableStateOf<String?>(null) }
-    var confirmTier3 by remember { mutableStateOf(prefs.confirmTier3) }
     var retentionDays by remember { mutableStateOf(prefs.auditRetentionDays.toString()) }
 
     LazyColumn(
@@ -424,12 +452,13 @@ fun SettingsScreen(prefs: EncryptedPrefs) {
                     modifier = Modifier.menuAnchor().fillMaxWidth()
                 )
                 ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    listOf("ollama", "mediapipe").forEach { provider ->
+                    listOf("ollama", "mediapipe", "openrouter").forEach { provider ->
                         DropdownMenuItem(
                             text = { Text(provider) },
                             onClick = {
                                 llmProvider = provider
                                 prefs.llmProvider = provider
+                                viewModel.refreshConfiguration()
                                 expanded = false
                             }
                         )
@@ -445,7 +474,10 @@ fun SettingsScreen(prefs: EncryptedPrefs) {
                         ollamaHost = it
                         val result = com.aionos.security.NetworkPolicy.validateOllamaHost(it)
                         hostStatus = result.exceptionOrNull()?.message
-                        if (result.isSuccess) prefs.ollamaHost = result.getOrThrow()
+                        if (result.isSuccess) {
+                            prefs.ollamaHost = result.getOrThrow()
+                            viewModel.refreshConfiguration()
+                        }
                     },
                     isError = hostStatus != null,
                     supportingText = { hostStatus?.let { Text(it) } },
@@ -462,22 +494,47 @@ fun SettingsScreen(prefs: EncryptedPrefs) {
             }
         }
         item {
+            if (llmProvider == "openrouter") {
+                OutlinedTextField(
+                    value = openRouterApiKey,
+                    onValueChange = { openRouterApiKey = it; prefs.openRouterApiKey = it },
+                    label = { Text("OpenRouter API key") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = openRouterModel,
+                    onValueChange = { openRouterModel = it; prefs.openRouterModel = it },
+                    label = { Text("OpenRouter model") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Allow remote prompts", style = MaterialTheme.typography.bodyMedium)
+                        Text("Only enable this if you consent to sending prompts to OpenRouter.", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(checked = remoteConsent, onCheckedChange = { remoteConsent = it; prefs.remoteProviderConsent = it; viewModel.refreshConfiguration() })
+                }
+            }
+        }
+        item {
+            Button(
+                onClick = { viewModel.refreshConfiguration() },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Apply LLM settings") }
+        }
+        item {
             Divider()
             Spacer(Modifier.height(8.dp))
             Text("Safety", style = MaterialTheme.typography.titleMedium)
         }
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Confirm destructive actions")
-                Switch(
-                    checked = confirmTier3,
-                    onCheckedChange = { confirmTier3 = it; prefs.confirmTier3 = it }
-                )
-            }
+            Text("TIER_3 actions always require an explicit confirmation dialog.", style = MaterialTheme.typography.bodyMedium)
         }
         item {
             Divider()

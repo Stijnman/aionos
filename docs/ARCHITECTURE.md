@@ -46,3 +46,16 @@ Every parsed action passes through `ActionPolicy` before it reaches `SafeActionE
 Vision fallback is intentionally proposal-only. `VisionActionMapper` requires a confidence of at least 0.80 and verifies that the proposed tap center is inside the captured display. A proposal still follows the normal safety and confirmation path; the vision layer never dispatches gestures directly.
 
 Plugin actions are explicitly targeted to a loaded plugin, must be declared in that plugin’s manifest, and may only include declared parameter names. Ollama endpoints are validated before encrypted persistence: only HTTP/HTTPS hosts without embedded credentials are accepted. Screen captures are held in memory and are not uploaded or persisted by the capture coordinator.
+
+
+## Remediation guarantees
+
+The orchestrator now stops on the first failed action, reports an error rather than a false completion, and keeps only sanitized action-class history. Voice collection is single-owner and cancellable; transcripts are cleared before dispatch. The view model reports an unavailable AccessibilityService instead of silently dropping commands and can reload the provider bridge after settings changes.
+
+OpenRouter is a deliberately explicit remote provider. Its API key is stored in encrypted preferences, selection requires remote-provider consent, and the default remains Ollama. The application must not describe remote prompts as anonymized unless an actual redaction pipeline has run. Cleartext Ollama endpoints are restricted to local addresses by `NetworkPolicy`; HTTPS endpoints remain available for configured deployments.
+
+Vision uses explicit MediaProjection consent, one-shot local analysis, an allowlist of recognized interactive labels, and proposal-only output. Captured bitmaps are recycled after analysis, and proposals are not automatically executed. The bundled EfficientDet-Lite0 asset is packaged under `android/app/src/main/assets/`.
+
+Temporary `AccessibilityNodeInfo` children obtained during tree traversal are recycled after use. Vosk model installation is bounded, zip-slip checked, optionally checksum-verified, and staged before replacement. The first-run accessibility setup notification is now implemented rather than silently ignored.
+
+CI is expected to run unit tests, lint, debug and release F-Droid APK assembly, and an emulator instrumentation smoke test. A local environment without an Android SDK can validate Gradle configuration and static resources but cannot claim a compiled APK or passing Android tests.

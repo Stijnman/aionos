@@ -37,14 +37,14 @@ RepoType: git
 Repo: https://github.com/Stijnman/aionos.git
 
 Builds:
-  - versionName: 0.2.0-alpha
-    versionCode: 2
-    commit: v0.2.0-alpha
+  - versionName: 0.2.1-alpha
+    versionCode: 3
+    commit: v0.2.1-alpha
     subdir: android/app
     gradle:
       - fdroid
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 0.2.0-alpha
-CurrentVersionCode: 2
+CurrentVersion: 0.2.1-alpha
+CurrentVersionCode: 3

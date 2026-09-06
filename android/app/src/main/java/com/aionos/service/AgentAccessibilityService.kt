@@ -2,7 +2,11 @@ package com.aionos.service
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
@@ -131,12 +135,44 @@ class AgentAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun showSetupNotification() {}
+    @Suppress("DEPRECATION")
+    private fun showSetupNotification() {
+        val manager = getSystemService(NotificationManager::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            manager.createNotificationChannel(
+                NotificationChannel(SETUP_CHANNEL, "AionOS setup", NotificationManager.IMPORTANCE_DEFAULT)
+            )
+        }
+        val intent = Intent(this, com.aionos.MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            SETUP_NOTIFICATION_ID,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            android.app.Notification.Builder(this, SETUP_CHANNEL)
+        } else {
+            android.app.Notification.Builder(this)
+        }
+        manager.notify(
+            SETUP_NOTIFICATION_ID,
+            builder.setSmallIcon(com.aionos.R.drawable.ic_agent)
+                .setContentTitle("Finish AionOS setup")
+                .setContentText("Open AionOS to review permissions and safety settings.")
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .build()
+        )
+    }
 
     companion object {
+        private const val SETUP_CHANNEL = "aionos_setup"
+        private const val SETUP_NOTIFICATION_ID = 100
         const val TAG = "AgentAccessibilityService"
         @Volatile
         var instance: AgentAccessibilityService? = null
             private set
     }
+
 }

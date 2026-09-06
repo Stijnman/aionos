@@ -10,6 +10,7 @@ object VisionActionMapper {
         minimumConfidence: Float = 0.80f
     ): Result<AgentAction.Tap> = runCatching {
         require(element.confidence >= minimumConfidence) { "Vision confidence is below the safe threshold" }
+        require(element.label.lowercase() in INTERACTIVE_LABELS) { "Detection is not a recognized interactive control" }
         require(screenWidth > 0 && screenHeight > 0) { "Invalid screen dimensions" }
         val centerX = element.bounds.centerX()
         val centerY = element.bounds.centerY()
@@ -18,4 +19,8 @@ object VisionActionMapper {
         }
         AgentAction.Tap(centerX, centerY, nodeText = element.label.take(120))
     }
+
+    private val INTERACTIVE_LABELS = setOf(
+        "button", "link", "text", "input", "checkbox", "radio", "switch", "menu", "icon"
+    )
 }

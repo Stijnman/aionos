@@ -1,79 +1,79 @@
-# AionOS Android — Generated File Manifest
-# Total: 35 files, 111,636 bytes (109.0 KB)
-# Generated: 2026-09-02
-# Research-based corrections applied:
-#   - MediaPipe uses TensorFlow Lite Flatbuffer (.bin), NOT GGUF
-#   - Ollama uses OpenAI-compatible /v1/chat/completions
-#   - AccessibilityService requires canPerformGestures="true"
-#   - Vosk 0.3.47 is current Android version
+# AionOS Android — Current Repository Manifest
+# Generated from 84 tracked-or-source files; source inventory below.
+# Regenerate after material source-tree changes.
 
-## Core Architecture
-| File | Package | Purpose | Size |
-|------|---------|---------|------|
-| ActionModels.kt | com.aionos.action | Typed actions with safety tiers | 2,904 B |
-| SafeActionExecutor.kt | com.aionos.action | Tiered safety + stuck detection | 10,697 B |
-| AccessibilityTreeParser.kt | com.aionos.parser | Tree → LLM text | 4,119 B |
-| ActionParser.kt | com.aionos.parser | LLM JSON → typed actions | 4,192 B |
-| AgentAccessibilityService.kt | com.aionos.service | Core accessibility service | 4,674 B |
-| OverlayBubbleService.kt | com.aionos.service | Floating bubble | 5,383 B |
+## Current Android source and resource files
 
-## Agent Brain
-| File | Package | Purpose | Size |
-|------|---------|---------|------|
-| AgentOrchestrator.kt | com.aionos.agent | Central coordinator | 5,795 B |
-| AgentViewModel.kt | com.aionos.ui | Compose state management | 3,721 B |
+| File | Bytes |
+|---|---:|
+| `.github/CI-CD-SETUP.md` | 4,572 |
+| `.github/workflows/android-fdroid.yml` | 1,237 |
+| `.github/workflows/build.yml` | 808 |
+| `.github/workflows/release.yml` | 1,550 |
+| `.github/workflows/test.yml` | 1,786 |
+| `MANIFEST.md` | 3,431 |
+| `QUICKSTART.md` | 1,479 |
+| `README.md` | 5,353 |
+| `VIBE_PROMPT.md` | 3,814 |
+| `android/README.md` | 248 |
+| `android/app/build.gradle.kts` | 3,394 |
+| `android/app/src/androidTest/java/com/aionos/AppSmokeTest.kt` | 466 |
+| `android/app/src/main/AndroidManifest.xml` | 2,310 |
+| `android/app/src/main/assets/efficientdet-lite0.tflite` | 4,602,795 |
+| `android/app/src/main/java/com/aionos/AionosApplication.kt` | 240 |
+| `android/app/src/main/java/com/aionos/MainActivity.kt` | 27,652 |
+| `android/app/src/main/java/com/aionos/action/ActionModels.kt` | 2,993 |
+| `android/app/src/main/java/com/aionos/action/SafeActionExecutor.kt` | 11,667 |
+| `android/app/src/main/java/com/aionos/agent/AgentOrchestrator.kt` | 8,958 |
+| `android/app/src/main/java/com/aionos/audit/AuditLog.kt` | 7,094 |
+| `android/app/src/main/java/com/aionos/audit/AuditLogExporter.kt` | 694 |
+| `android/app/src/main/java/com/aionos/llm/LLMBridge.kt` | 2,410 |
+| `android/app/src/main/java/com/aionos/llm/MediaPipeBridge.kt` | 2,382 |
+| `android/app/src/main/java/com/aionos/llm/OllamaBridge.kt` | 3,405 |
+| `android/app/src/main/java/com/aionos/llm/OpenRouterBridge.kt` | 2,219 |
+| `android/app/src/main/java/com/aionos/parser/AccessibilityTreeParser.kt` | 4,119 |
+| `android/app/src/main/java/com/aionos/parser/ActionParser.kt` | 3,619 |
+| `android/app/src/main/java/com/aionos/plugin/PluginLoader.kt` | 3,947 |
+| `android/app/src/main/java/com/aionos/security/ActionPolicy.kt` | 1,597 |
+| `android/app/src/main/java/com/aionos/security/BiometricGate.kt` | 1,489 |
+| `android/app/src/main/java/com/aionos/security/EncryptedPrefs.kt` | 4,737 |
+| `android/app/src/main/java/com/aionos/security/NetworkPolicy.kt` | 1,429 |
+| `android/app/src/main/java/com/aionos/service/AgentAccessibilityService.kt` | 4,674 |
+| `android/app/src/main/java/com/aionos/service/OverlayBubbleService.kt` | 5,383 |
+| `android/app/src/main/java/com/aionos/ui/AgentViewModel.kt` | 4,147 |
+| `android/app/src/main/java/com/aionos/ui/ConfirmationDialog.kt` | 2,335 |
+| `android/app/src/main/java/com/aionos/ui/Onboarding.kt` | 1,487 |
+| `android/app/src/main/java/com/aionos/ui/theme/Color.kt` | 274 |
+| `android/app/src/main/java/com/aionos/ui/theme/Theme.kt` | 1,561 |
+| `android/app/src/main/java/com/aionos/ui/theme/Type.kt` | 478 |
+| `android/app/src/main/java/com/aionos/vision/ScreenCaptureManager.kt` | 3,663 |
+| `android/app/src/main/java/com/aionos/vision/VisionActionMapper.kt` | 1,093 |
+| `android/app/src/main/java/com/aionos/vision/VisionCoordinator.kt` | 712 |
+| `android/app/src/main/java/com/aionos/vision/VisionFallback.kt` | 2,426 |
+| `android/app/src/main/java/com/aionos/voice/VoiceInputManager.kt` | 3,754 |
+| `android/app/src/main/java/com/aionos/voice/VoskModelManager.kt` | 4,607 |
+| `android/app/src/main/res/drawable/bubble_background.xml` | 325 |
+| `android/app/src/main/res/drawable/ic_agent.xml` | 633 |
+| `android/app/src/main/res/layout/overlay_bubble.xml` | 653 |
+| `android/app/src/main/res/values/strings.xml` | 3,369 |
+| `android/app/src/main/res/values/styles.xml` | 554 |
+| `android/app/src/main/res/xml/accessibility_service_config.xml` | 652 |
+| `android/app/src/test/java/com/aionos/parser/ActionParserTest.kt` | 1,420 |
+| `android/app/src/test/java/com/aionos/security/ActionPolicyTest.kt` | 900 |
+| `android/app/src/test/java/com/aionos/security/NetworkPolicyTest.kt` | 822 |
+| `android/app/src/test/java/com/aionos/vision/VisionActionMapperTest.kt` | 926 |
+| `android/build.gradle.kts` | 223 |
+| `android/settings.gradle.kts` | 388 |
+| `docs/ARCHITECTURE.md` | 2,435 |
+| `metadata/com.aionos.yml` | 1,640 |
+| `scripts/setup_openrouter.sh` | 1,953 |
+| `setup.sh` | 993 |
 
-## LLM Layer
-| File | Package | Purpose | Size |
-|------|---------|---------|------|
-| LLMBridge.kt | com.aionos.llm | Interface + prompts | 2,410 B |
-| MediaPipeBridge.kt | com.aionos.llm | On-device inference (TFLite) | 2,382 B |
-| OllamaBridge.kt | com.aionos.llm | LAN inference (OpenAI API) | 3,405 B |
+## Build and release inventory
 
-## Security & Audit
-| File | Package | Purpose | Size |
-|------|---------|---------|------|
-| EncryptedPrefs.kt | com.aionos.security | AES-256 settings | 3,634 B |
-| AuditLog.kt | com.aionos.audit | SQLite audit trail | 6,836 B |
-
-## Extensions
-| File | Package | Purpose | Size |
-|------|---------|---------|------|
-| VoiceInputManager.kt | com.aionos.voice | Vosk STT | 3,634 B |
-| PluginLoader.kt | com.aionos.plugin | APK plugin system | 2,573 B |
-| VisionFallback.kt | com.aionos.vision | Object detection fallback | 2,426 B |
-
-## UI
-| File | Package | Purpose | Size |
-|------|---------|---------|------|
-| MainActivity.kt | com.aionos | Compose main screen | 18,403 B |
-| ConfirmationDialog.kt | com.aionos.ui | TIER 3 dialogs | 2,335 B |
-| Theme.kt | com.aionos.ui.theme | Material3 theme | 1,561 B |
-| Color.kt | com.aionos.ui.theme | Color definitions | 274 B |
-| Type.kt | com.aionos.ui.theme | Typography | 478 B |
-
-## Resources & Config
-| File | Location | Purpose | Size |
-|------|----------|---------|------|
-| strings.xml | res/values/ | Translations | 3,369 B |
-| overlay_bubble.xml | res/layout/ | Bubble layout | 653 B |
-| bubble_background.xml | res/drawable/ | Bubble shape | 325 B |
-| ic_agent.xml | res/drawable/ | Agent icon | 633 B |
-| accessibility_service_config.xml | res/xml/ | Service config | 652 B |
-| AndroidManifest.xml | root/ | Manifest | 2,131 B |
-
-## Build
-| File | Purpose | Size |
-|------|---------|------|
-| build.gradle.kts | Dependencies & flavors | 3,238 B |
-| settings.gradle.kts | Project settings | 391 B |
-| gradle.properties | Gradle config | 136 B |
-| proguard-rules.pro | Obfuscation rules | 740 B |
-
-## Meta
-| File | Purpose | Size |
-|------|---------|------|
-| AionosApplication.kt | Application class | 240 B |
-| fdroid_metadata.yml | F-Droid store data | 1,470 B |
-| README_ANDROID.md | Documentation | 2,680 B |
-| MANIFEST.md | This file | — |
+| Area | Files |
+|---|---|
+| Android build | `android/settings.gradle.kts`, `android/build.gradle.kts`, `android/app/build.gradle.kts`, Gradle wrapper |
+| CI | `.github/workflows/android-fdroid.yml`, `.github/workflows/build.yml`, `.github/workflows/release.yml`, `.github/workflows/test.yml` |
+| F-Droid | `metadata/com.aionos.yml`, `fastlane/metadata/android/en-US/*` |
+| Documentation | `README.md`, `QUICKSTART.md`, `android/README.md`, `docs/ARCHITECTURE.md`, `VIBE_PROMPT.md` |
