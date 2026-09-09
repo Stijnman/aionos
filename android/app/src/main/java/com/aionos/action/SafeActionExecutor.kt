@@ -11,6 +11,7 @@ import com.aionos.audit.AuditLog
 import com.aionos.parser.AccessibilityTreeParser
 import com.aionos.security.ActionPolicy
 import com.aionos.security.EncryptedPrefs
+import com.aionos.security.PasswordFieldGuard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -40,67 +41,76 @@ class SafeActionExecutor(
     suspend fun execute(action: AgentAction): Result<String> = withContext(Dispatchers.Main) {
         val startTime = System.currentTimeMillis()
 
-        val policyErrors = ActionPolicy.validate(action)
+        // P0: never trust LLM isPasswordField alone — elevate from AccessibilityNodeInfo first.
+        val effectiveAction = when (action) {
+            is AgentAction.Type -> PasswordFieldGuard.resolveTypeAction(
+                action,
+                isFocusedEditablePassword()
+            )
+            else -> action
+        }
+
+        val policyErrors = ActionPolicy.validate(effectiveAction)
         if (policyErrors.isNotEmpty()) {
-            auditLog.record(action, false, error = policyErrors.joinToString("; "))
+            auditLog.record(effectiveAction, false, error = policyErrors.joinToString("; "))
             return@withContext Result.failure(SecurityException(policyErrors.joinToString("; ")))
         }
 
-        if (!prefs.isAgentEnabled) {
-            auditLog.record(action, false, error = "Agent disabled by kill switch")
+        if (PasswordFieldGuard.killSwitchBlocksExecution(prefs.isAgentEnabled)) {
+            auditLog.record(effectiveAction, false, error = "Agent disabled by kill switch")
             return@withContext Result.failure(IllegalStateException("Agent is paused. Enable in settings."))
         }
 
-        if (action.safetyTier == AgentAction.SafetyTier.TIER_4) {
-            auditLog.record(action, false, error = "TIER_4 action blocked")
-            return@withContext Result.failure(SecurityException("Action blocked by safety policy: ${action.javaClass.simpleName}"))
+        if (effectiveAction.safetyTier == AgentAction.SafetyTier.TIER_4) {
+            auditLog.record(effectiveAction, false, error = "TIER_4 action blocked")
+            return@withContext Result.failure(SecurityException("Action blocked by safety policy: ${effectiveAction.javaClass.simpleName}"))
         }
 
-        if (action.safetyTier == AgentAction.SafetyTier.TIER_3 || action.requiresConfirmation) {
-            val confirmed = withTimeoutOrNull(30000) { onConfirmationRequired(action) } ?: false
+        if (PasswordFieldGuard.needsConfirmation(effectiveAction)) {
+            val confirmed = withTimeoutOrNull(30000) { onConfirmationRequired(effectiveAction) } ?: false
             if (!confirmed) {
-                auditLog.record(action, false, error = "User denied confirmation")
-                return@withContext Result.failure(SecurityException("User denied confirmation for ${action.javaClass.simpleName}"))
+                auditLog.record(effectiveAction, false, error = "User denied confirmation")
+                return@withContext Result.failure(SecurityException("User denied confirmation for ${effectiveAction.javaClass.simpleName}"))
             }
         }
 
-        if (isStuckLoop(action)) {
-            auditLog.record(action, false, error = "Stuck loop detected")
+        if (isStuckLoop(effectiveAction)) {
+            auditLog.record(effectiveAction, false, error = "Stuck loop detected")
             return@withContext Result.failure(IllegalStateException("Stuck loop detected. Same action repeated with no state change."))
         }
 
         val result = try {
-            when (action) {
-                is AgentAction.Tap -> performTap(action)
-                is AgentAction.LongPress -> performLongPress(action)
-                is AgentAction.Type -> performType(action)
-                is AgentAction.Scroll -> performScroll(action)
-                is AgentAction.Swipe -> performSwipe(action)
-                is AgentAction.OpenApp -> performOpenApp(action)
-                is AgentAction.PressKey -> performPressKey(action)
-                is AgentAction.ReadText -> performReadText(action)
-                is AgentAction.Wait -> performWait(action)
+            when (effectiveAction) {
+                is AgentAction.Tap -> performTap(effectiveAction)
+                is AgentAction.LongPress -> performLongPress(effectiveAction)
+                is AgentAction.Type -> performType(effectiveAction)
+                is AgentAction.Scroll -> performScroll(effectiveAction)
+                is AgentAction.Swipe -> performSwipe(effectiveAction)
+                is AgentAction.OpenApp -> performOpenApp(effectiveAction)
+                is AgentAction.PressKey -> performPressKey(effectiveAction)
+                is AgentAction.ReadText -> performReadText(effectiveAction)
+                is AgentAction.Wait -> performWait(effectiveAction)
                 is AgentAction.Blocked -> Result.failure(SecurityException("Blocked action cannot execute"))
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
 
-        if (action !is AgentAction.Wait) {
+        if (effectiveAction !is AgentAction.Wait) {
             delay(500)
             val currentRoot = service.rootInActiveWindow
             val currentHash = treeParser.parse(currentRoot).hashCode()
-            if (currentHash == lastTreeHash && action.safetyTier != AgentAction.SafetyTier.TIER_1) {
-                auditLog.record(action, result.isSuccess, error = "Warning: No state change detected", durationMs = System.currentTimeMillis() - startTime)
+            if (currentHash == lastTreeHash && effectiveAction.safetyTier != AgentAction.SafetyTier.TIER_1) {
+                auditLog.record(effectiveAction, result.isSuccess, error = "Warning: No state change detected", durationMs = System.currentTimeMillis() - startTime)
             } else {
-                auditLog.record(action, result.isSuccess, durationMs = System.currentTimeMillis() - startTime)
+                auditLog.record(effectiveAction, result.isSuccess, durationMs = System.currentTimeMillis() - startTime)
             }
             lastTreeHash = currentHash
         } else {
-            auditLog.record(action, result.isSuccess, durationMs = System.currentTimeMillis() - startTime)
+            auditLog.record(effectiveAction, result.isSuccess, durationMs = System.currentTimeMillis() - startTime)
         }
 
-        actionHistory.addLast(ActionRecord(action, lastTreeHash, System.currentTimeMillis()))
+        actionHistory.addLast(ActionRecord(effectiveAction, lastTreeHash, System.currentTimeMillis()))
         if (actionHistory.size > 50) actionHistory.removeFirst()
 
         result
@@ -140,6 +150,12 @@ class SafeActionExecutor(
         val focusedNode = findFocusedEditable(root)
             ?: return Result.failure(IllegalStateException("No focused editable field found"))
         return try {
+            // Fail closed if the focused node is a password field but confirmation was not required.
+            if (focusedNode.isPassword && !PasswordFieldGuard.needsConfirmation(action)) {
+                return Result.failure(
+                    SecurityException("Password field typing requires user confirmation")
+                )
+            }
             val arguments = Bundle().apply {
                 putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, action.text)
             }
@@ -207,6 +223,17 @@ class SafeActionExecutor(
     private suspend fun performWait(action: AgentAction.Wait): Result<String> {
         delay(action.millis)
         return Result.success("Waited ${action.millis}ms")
+    }
+
+    /** True when the focused editable node is a password field (AccessibilityNodeInfo.isPassword). */
+    private fun isFocusedEditablePassword(): Boolean {
+        val root = service.rootInActiveWindow ?: return false
+        val focused = findFocusedEditable(root) ?: return false
+        return try {
+            focused.isPassword
+        } finally {
+            focused.recycle()
+        }
     }
 
     private fun findFocusedEditable(root: AccessibilityNodeInfo): AccessibilityNodeInfo? =

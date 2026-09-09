@@ -63,7 +63,6 @@ jobs:
     
     - name: Run Android Lint
       run: cd android && ./gradlew lintFdroidDebug
-      continue-on-error: true
     
     - name: Upload lint results
       if: always()
