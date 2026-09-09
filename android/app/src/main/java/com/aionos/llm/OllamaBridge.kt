@@ -17,9 +17,12 @@ import kotlinx.serialization.json.Json
  * LAN-based LLM via Ollama HTTP API.
  * Uses OpenAI-compatible /v1/chat/completions endpoint (supported since Ollama 0.1.24+).
  * Screen data never leaves the LAN.
+ *
+ * Default host is the Android emulator loopback to the host machine (cleartext-allowed).
+ * For physical devices use http://hostname.local:11434 or HTTPS to a private IP.
  */
 class OllamaBridge(
-    private val host: String = "http://192.168.1.1:11434",
+    private val host: String = "http://10.0.2.2:11434",
     private val model: String = "llama3.2",
     private val timeoutMs: Long = 60000
 ) : LLMBridge {

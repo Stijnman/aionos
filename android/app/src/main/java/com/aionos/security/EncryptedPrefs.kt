@@ -22,6 +22,9 @@ class EncryptedPrefs(context: Context) {
         const val KEY_OVERLAY_ENABLED = "overlay_enabled"
         const val KEY_LAST_CLEANUP = "last_cleanup_timestamp"
 
+        /** Emulator host-loopback; permitted by network_security_config cleartext policy. */
+        const val DEFAULT_OLLAMA_HOST = "http://10.0.2.2:11434"
+
         @Volatile private var instance: EncryptedPrefs? = null
 
         fun getInstance(context: Context): EncryptedPrefs = instance ?: synchronized(this) {
@@ -52,7 +55,7 @@ class EncryptedPrefs(context: Context) {
         }
 
     var ollamaHost: String
-        get() = prefs.getString(KEY_OLLAMA_HOST, "http://192.168.1.1:11434") ?: "http://192.168.1.1:11434"
+        get() = prefs.getString(KEY_OLLAMA_HOST, DEFAULT_OLLAMA_HOST) ?: DEFAULT_OLLAMA_HOST
         set(value) {
             NetworkPolicy.validateOllamaHost(value).onSuccess { normalized ->
                 prefs.edit().putString(KEY_OLLAMA_HOST, normalized).apply()
