@@ -1,0 +1,142 @@
+{
+  "name": "Mistral Vibe",
+  "version": "1.0.0",
+  "last_updated": "2026-09-11",
+  "description": "CLI-based AI agent for autonomous code and repository management",
+  "capabilities": {
+    "repository_management": [
+      "Clone repositories from GitHub, GitLab, Bitbucket",
+      "Initialize new repositories with best practices",
+      "Fork repositories and manage branches",
+      "Push/pull to remote repositories",
+      "Manage Git history (rebase, cherry-pick, revert)",
+      "Resolve merge conflicts",
+      "Create and manage tags and releases"
+    ],
+    "documentation": [
+      "Write comprehensive documentation (README, SKILL.md, etc.)",
+      "Standardize documentation across repositories",
+      "Create markdown files with proper formatting",
+      "Generate API documentation",
+      "Write technical specifications",
+      "Create architecture diagrams (Mermaid)"
+    ],
+    "code_development": [
+      "Write production-ready Python code",
+      "Write JavaScript/TypeScript code",
+      "Write Bash/Shell scripts",
+      "Write YAML/JSON configuration",
+      "Write HTML/CSS",
+      "Refactor existing code",
+      "Implement new features",
+      "Fix bugs and issues",
+      "Optimize algorithms",
+      "Add error handling and validation"
+    ],
+    "ci_cd_devops": [
+      "Create GitHub Actions workflows",
+      "Set up pre-commit hooks",
+      "Configure linting (ESLint, Pylint, Flake8)",
+      "Create Dockerfiles and docker-compose files",
+      "Configure deployment pipelines",
+      "Set up testing frameworks (pytest, Jest)",
+      "Implement security scanning (TruffleHog, CodeQL)",
+      "Configure code coverage reporting"
+    ],
+    "quality_assurance": [
+      "Write unit tests and integration tests",
+      "Create test cases for edge scenarios",
+      "Set up test data and mocking",
+      "Implement test coverage requirements",
+      "Perform code reviews",
+      "Validate inputs and outputs"
+    ],
+    "security": [
+      "Audit code for vulnerabilities",
+      "Implement security best practices",
+      "Create security policies (SECURITY.md)",
+      "Set up secret scanning",
+      "Configure rate limiting",
+      "Implement authentication and authorization",
+      "Add security headers and CORS policies"
+    ],
+    "project_management": [
+      "Create GitHub issue templates",
+      "Set up pull request templates",
+      "Create CONTRIBUTORS.md files",
+      "Maintain CHANGELOG.md files",
+      "Create STATUS.md tracking documents"
+    ],
+    "infrastructure": [
+      "Create configuration files",
+      "Set up environment variables",
+      "Create Terraform scripts",
+      "Set up Kubernetes manifests",
+      "Configure monitoring and logging"
+    ],
+    "data_processing": [
+      "Parse and transform data (JSON, CSV, XML)",
+      "Create data pipelines",
+      "Implement ETL processes",
+      "Generate reports and dashboards",
+      "Analyze datasets"
+    ],
+    "web_development": [
+      "Create web applications",
+      "Set up REST APIs",
+      "Implement GraphQL endpoints",
+      "Create SPAs (React, Vue)",
+      "Set up static sites",
+      "Configure web servers (Nginx, Apache)"
+    ],
+    "automation": [
+      "Create scripts for repetitive tasks",
+      "Automate workflows",
+      "Set up cron jobs",
+      "Create CI/CD pipelines",
+      "Implement webhooks",
+      "Automate deployments"
+    ],
+    "research": [
+      "Read and analyze codebases",
+      "Research technologies",
+      "Solve complex problems",
+      "Learn new frameworks",
+      "Understand domain concepts",
+      "Analyze security vulnerabilities"
+    ]
+  },
+  "languages": {
+    "expert": ["Python", "Bash", "YAML", "JSON", "Markdown"],
+    "advanced": ["JavaScript", "TypeScript", "HTML", "CSS", "SQL"]
+  },
+  "tools": {
+    "python": ["Django", "Flask", "FastAPI", "pytest", "requests", "pandas", "numpy"],
+    "javascript": ["React", "Vue", "Express", "Next.js", "Node.js"],
+    "testing": ["pytest", "Jest", "Mocha", "unittest"],
+    "ci_cd": ["GitHub Actions", "GitLab CI", "CircleCI"],
+    "devops": ["Docker", "Kubernetes", "Terraform", "Ansible"],
+    "databases": ["PostgreSQL", "MySQL", "MongoDB", "SQLite", "Redis"]
+  },
+  "execution_modes": [
+    "Full Autonomous Mode: Operate without confirmation",
+    "Interactive Mode: Ask for clarification",
+    "Review Mode: Analyze and recommend"
+  ],
+  "scale": {
+    "min": "Single file edits",
+    "max": "40+ repositories in batch",
+    "complexity": "Projects with 100+ files"
+  },
+  "quality_guarantees": [
+    "Production-ready code",
+    "Well-documented everything",
+    "Tested where applicable",
+    "Secure by default"
+  ],
+  "contact": {
+    "generated_by": "Mistral Vibe <vibe@mistral.ai>",
+    "maintainer": "Stijnman"
+  },
+  "notes": "This is a living document that will be updated as new capabilities are acquired."
+}
