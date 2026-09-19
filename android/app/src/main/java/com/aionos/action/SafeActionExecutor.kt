@@ -175,8 +175,8 @@ class SafeActionExecutor(
             val scrollAction = when (action.direction) {
                 AgentAction.Direction.UP -> AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
                 AgentAction.Direction.DOWN -> AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
-                AgentAction.Direction.LEFT -> AccessibilityNodeInfo.ACTION_SCROLL_LEFT
-                AgentAction.Direction.RIGHT -> AccessibilityNodeInfo.ACTION_SCROLL_RIGHT
+                AgentAction.Direction.LEFT -> AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_LEFT.id
+                AgentAction.Direction.RIGHT -> AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_RIGHT.id
             }
             val success = scrollable.performAction(scrollAction)
             if (success) Result.success("Scrolled ${action.direction}")
