@@ -3,6 +3,7 @@ package com.aionos.vision
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Rect
+import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.objectdetector.ObjectDetector
 import kotlinx.coroutines.Dispatchers
@@ -38,14 +39,19 @@ class VisionFallback(private val context: Context) {
     suspend fun detectElements(bitmap: Bitmap): List<DetectedElement> = withContext(Dispatchers.Default) {
         if (!isInitialized) initialize().getOrThrow()
         val detector = objectDetector ?: return@withContext emptyList()
-        val results = detector.detect(bitmap)
-        results.detections().map { detection ->
-            val bbox = detection.boundingBox()
-            DetectedElement(
-                label = detection.categories().firstOrNull()?.categoryName() ?: "unknown",
-                confidence = detection.categories().firstOrNull()?.score() ?: 0f,
-                bounds = Rect(bbox.left.toInt(), bbox.top.toInt(), bbox.right.toInt(), bbox.bottom.toInt())
-            )
+        val mpImage = BitmapImageBuilder(bitmap).build()
+        try {
+            val results = detector.detect(mpImage)
+            results.detections().map { detection ->
+                val bbox = detection.boundingBox()
+                DetectedElement(
+                    label = detection.categories().firstOrNull()?.categoryName() ?: "unknown",
+                    confidence = detection.categories().firstOrNull()?.score() ?: 0f,
+                    bounds = Rect(bbox.left.toInt(), bbox.top.toInt(), bbox.right.toInt(), bbox.bottom.toInt())
+                )
+            }
+        } finally {
+            mpImage.close()
         }
     }
 
