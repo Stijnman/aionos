@@ -39,6 +39,7 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+        freeCompilerArgs += "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api"
     }
 
     testOptions {
@@ -91,8 +92,9 @@ dependencies {
     // Optional: Vosk on-device speech recognition
     implementation("com.alphacephei:vosk-android:0.3.47")
 
-    // Optional on-device LLM remains opt-in; vision fallback is enabled for this build.
+    // On-device MediaPipe vision + LLM inference.
     implementation("com.google.mediapipe:tasks-vision:0.10.9")
+    implementation("com.google.mediapipe:tasks-genai:0.10.18")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
