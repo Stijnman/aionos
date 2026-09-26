@@ -12,8 +12,10 @@ object VisionActionMapper {
         require(element.confidence >= minimumConfidence) { "Vision confidence is below the safe threshold" }
         require(element.label.lowercase() in INTERACTIVE_LABELS) { "Detection is not a recognized interactive control" }
         require(screenWidth > 0 && screenHeight > 0) { "Invalid screen dimensions" }
-        val centerX = element.bounds.centerX()
-        val centerY = element.bounds.centerY()
+        // Use Rect's public fields rather than Android framework helper methods so this
+        // safety mapper remains deterministic in local JVM unit tests as well as on-device.
+        val centerX = element.bounds.left + (element.bounds.right - element.bounds.left) / 2
+        val centerY = element.bounds.top + (element.bounds.bottom - element.bounds.top) / 2
         require(centerX in 0 until screenWidth && centerY in 0 until screenHeight) {
             "Detected element is outside the screen bounds"
         }
