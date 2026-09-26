@@ -2,7 +2,9 @@ package com.aionos.parser
 
 import com.aionos.action.AgentAction
 import com.aionos.action.SafeActionExecutor
+import com.aionos.security.PasswordFieldGuard
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -31,5 +33,29 @@ class ActionParserTest {
         val blocked = AgentAction.Blocked()
         assertTrue(!SafeActionExecutor.isBlockedByPolicy(allowed))
         assertTrue(SafeActionExecutor.isBlockedByPolicy(blocked))
+    }
+
+    @Test fun typeWithoutPasswordFlagDefaultsToNonConfirmingUntilNodeGuard() {
+        val actions = parser.parse("[{\"action\":\"type\",\"text\":\"hunter2\"}]")
+        val type = actions.single() as AgentAction.Type
+        assertFalse(type.isPasswordField)
+        assertFalse(type.requiresConfirmation)
+        // Guard must still elevate when AccessibilityNodeInfo says password
+        val elevated = PasswordFieldGuard.resolveTypeAction(type, nodeIsPassword = true)
+        assertTrue(elevated.requiresConfirmation)
+        assertEquals(AgentAction.SafetyTier.TIER_3, elevated.safetyTier)
+    }
+
+    @Test fun explicitFalsePasswordFlagStillElevatesFromNode() {
+        val actions = parser.parse(
+            "[{\"action\":\"type\",\"text\":\"secret\",\"isPasswordField\":false}]"
+        )
+        val type = actions.single() as AgentAction.Type
+        assertFalse(type.isPasswordField)
+        assertTrue(
+            PasswordFieldGuard.needsConfirmation(
+                PasswordFieldGuard.resolveTypeAction(type, nodeIsPassword = true)
+            )
+        )
     }
 }

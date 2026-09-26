@@ -35,9 +35,6 @@ class MediaPipeBridge(
             val options = LlmInference.LlmInferenceOptions.builder()
                 .setModelPath(modelPath)
                 .setMaxTokens(1024)
-                .setTopK(40)
-                .setTemperature(0.8f)
-                .setRandomSeed(0)
                 .build()
 
             llmInference = LlmInference.createFromOptions(context, options)

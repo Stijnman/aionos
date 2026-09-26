@@ -26,8 +26,6 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: gradle
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
       - name: Make Gradle executable
         run: chmod +x gradlew
       - name: Run unit tests
@@ -64,8 +62,6 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: gradle
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
       - name: Make Gradle executable
         run: chmod +x gradlew
       - name: Run instrumentation smoke test
