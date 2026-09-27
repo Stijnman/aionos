@@ -3,6 +3,7 @@ package com.aionos.vision
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.graphics.PixelFormat
 import android.media.Image
 import android.media.ImageReader
 import android.media.projection.MediaProjection
@@ -37,7 +38,7 @@ class ScreenCaptureManager(private val context: Context) {
             val metrics = DisplayMetrics()
             @Suppress("DEPRECATION")
             (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.getRealMetrics(metrics)
-            val imageReader = ImageReader.newInstance(metrics.widthPixels, metrics.heightPixels, 0x1, 2)
+            val imageReader = ImageReader.newInstance(metrics.widthPixels, metrics.heightPixels, PixelFormat.RGBA_8888, 2)
             reader = imageReader
             val virtualDisplay = mediaProjection.createVirtualDisplay(
                 "AionOS-Capture", metrics.widthPixels, metrics.heightPixels, metrics.densityDpi,
