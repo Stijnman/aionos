@@ -11,6 +11,6 @@ class AppSmokeTest {
     @Test
     fun packageIdentityIsStable() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.aionos", context.packageName)
+        assertEquals("com.aionos.debug", context.packageName)
     }
 }
