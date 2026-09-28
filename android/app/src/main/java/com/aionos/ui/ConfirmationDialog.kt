@@ -24,7 +24,7 @@ fun ConfirmationDialog(
         is AgentAction.Type -> if (action.isPasswordField) {
             "The agent wants to type into a password field. This is a sensitive operation."
         } else {
-            "The agent wants to type: "${action.text.take(50)}${if (action.text.length > 50) "..." else ""}""
+            "The agent wants to type: \"${action.text.take(50)}${if (action.text.length > 50) "..." else ""}\""
         }
         is AgentAction.OpenApp -> "The agent wants to open an application."
         else -> "The agent wants to perform a potentially sensitive action."

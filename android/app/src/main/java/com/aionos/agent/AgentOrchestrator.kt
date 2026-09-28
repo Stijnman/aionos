@@ -7,6 +7,8 @@ import com.aionos.llm.LLMBridge
 import com.aionos.llm.MediaPipeBridge
 import com.aionos.llm.OllamaBridge
 import com.aionos.llm.OpenRouterBridge
+import com.aionos.llm.buildSystemPrompt
+import com.aionos.llm.buildUserPrompt
 import com.aionos.parser.ActionParser
 import com.aionos.security.EncryptedPrefs
 import com.aionos.service.AgentAccessibilityService
@@ -107,8 +109,6 @@ class AgentOrchestrator(
                         _state.value = AgentState.Error("Execution stopped after an action failure")
                         return@launch
                     }
-                    // One fully successful, policy-checked plan is a completed command. A later
-                    // verification/replan can be added without misusing a wait as proof of success.
                     completed = true
                 }
                 if (!completed) _state.value = AgentState.Error("Maximum planning steps reached")
