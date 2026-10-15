@@ -90,7 +90,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     // Optional: Vosk on-device speech recognition
-    implementation("com.alphacephei:vosk-android:0.3.47")
+    implementation("com.alphacephei:vosk-android:0.3.75")
 
     // On-device MediaPipe vision + LLM inference.
     implementation("com.google.mediapipe:tasks-vision:0.10.9")
