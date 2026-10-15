@@ -32,14 +32,14 @@ jobs:
       run: cd android && ./gradlew bundleFdroidRelease
     
     - name: Upload APK artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: release-apk
         path: android/app/build/outputs/apk/fdroid/release/
         retention-days: 30
     
     - name: Upload AAB artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: release-aab
         path: android/app/build/outputs/bundle/fdroidRelease/
