@@ -1,48 +1,31 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## 0.2.1 alpha — remediation
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+### Action policy
 
----
+- Centralized `ActionPolicy` preflight layer: rejects TIER_4 actions and bounds coordinates, text input, scroll requests, wait durations, and Android package names before any Accessibility API call.
+- TIER_3 actions always require confirmation; the setting cannot bypass that boundary.
+- Password and typed-text contents are redacted from audit details.
+- Ollama endpoints validated before encrypted persistence; embedded credentials rejected; cleartext endpoints limited to local hosts.
 
-## [Unreleased]
+### Vision
 
-### Added
-- This CHANGELOG file standardized for tracking changes
-- `.github/` directory structure for GitHub configurations
+- Confidence-gated proposal layer and interactive-label allowlist; generic object detections cannot become taps.
+- Proposals are reported to the user and are not executed automatically.
 
----
+### Plugins
 
-## [1.1.0] - 2026-09-11
+- Dispatch requires an explicitly selected loaded plugin, matching manifest package, a declared action, bounded parameter names, and bounded parameter values.
 
-### Added
-- **`SECURITY.md`**: Complete security policy with authentication, data protection, input validation, and incident response
-- **`CONTRIBUTING.md`**: Detailed contribution guidelines including how to add features, testing requirements, PR templates
-- **`TESTING.md`**: Comprehensive testing documentation with manual/automated testing guides and checklists
-- **`SKILL.md`**: Repository-level documentation with platform overview, usage examples, and security summary
-- **`CODE_OF_CONDUCT.md`**: Contributor Covenant code of conduct
-- **`STATUS.md`**: Repository status tracking with quality metrics
-- **`CONTRIBUTORS.md`**: Contributors list and recognition
-- **`.github/workflows/test.yml`**: GitHub Actions CI/CD workflow with testing, linting, spellcheck, and security scanning
-- **`.github/ISSUE_TEMPLATE/bug_report.yml`**: Bug report template with all required fields
-- **`.github/ISSUE_TEMPLATE/feature_request.yml`**: Feature request template with categorized options
-- **`.github/ISSUE_TEMPLATE/config.yml`**: Issue template configuration
-- **`.github/PULL_REQUEST_TEMPLATE.md`**: Pull request template with comprehensive checklist
-- **`.pre-commit-config.yaml`**: Pre-commit hooks configuration for code quality
-- **`.markdownlint.json`**: Markdown lint configuration
-- **`.gitignore`**: Comprehensive exclusions
-- **`.secrets.baseline`**: Secrets baseline for detect-secrets
+### Fixes
 
-### Changed
-- **`CHANGELOG.md`**: Standardized format for consistency
-- **`.gitignore`**: Enhanced with additional patterns
+- Fail-fast orchestration, single-collector voice lifecycle management, accessibility-node recycling, non-sensitive typed-input result messages, encrypted OpenRouter consent settings, atomic/checksummable Vosk installation, first-run setup notification delivery, and Android instrumentation scaffolding.
+- Release packaging includes required service metadata, model asset, XML theme, and icon resources.
 
-### Fixed
-- All documentation now has consistent structure and cross-references
-- All security warnings properly reference SECURITY.md
+## Earlier alphas
 
----
-
-*Changelog standardized: September 11, 2026*
+- Initial feature set: intent parsing, local LLM bridges (MediaPipe / Ollama), typed action execution with safety tiers, on-device SQLite audit log, AES-256 encrypted preferences, Vosk voice input, APK plugin system, vision fallback, overlay bubble, Compose UI.
+- Added: remote-provider opt-in (OpenRouter, off by default), privacy-safe action reporting, accessibility-node cleanup, bounded vision proposals, plugin manifest validation, model-download integrity, service setup notifications.
+- Test coverage: parser, action-policy, network-policy, vision, and Android instrumentation smoke tests. F-Droid workflow runs unit tests, lint, debug and release APK assembly, and an emulator smoke test.
+- Full APK, unit-test, lint, and emulator execution requires an Android SDK; the GitHub Actions workflow is the authoritative verification environment.

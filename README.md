@@ -1,48 +1,69 @@
-# AionOS Android
+# AionOS
 
-Local AI-powered operating layer for Android. Natural language to on-device actions via Accessibility services. Private by default.
+Local AI operating layer for Android. Turn natural language (voice or text) into on-device actions through the Accessibility API. Private by default: all inference, parsing, and execution happens on the device; nothing leaves it unless you explicitly opt in.
 
-## Architecture
+> Status: 0.2.1 alpha. Under active development. Expect rough edges and breaking changes.
+
+## Why
+
+Most Android voice assistants ship your commands to a cloud model and execute whatever comes back. AionOS inverts that: the LLM only produces a typed, validated action plan, and a policy layer decides what is allowed to run. Even with a remote model enabled, the action itself is always executed locally under the same safety policy.
+
+## How it works
 
 ```
-User Input (Voice/Text) → Intent Parser → Local LLM (MediaPipe/Ollama)
-                                               ↓
-                     Action Executor ← Action Parser (JSON)
-                            ↓
-               [Kill Switch] [Safety Tiers] [Stuck Detection] [Audit Log]
-                            ↓
-                    Accessibility API (tap/scroll/type/open)
+User input (voice/text)
+        ↓
+Intent Parser → Local LLM (MediaPipe on-device, or Ollama on your LAN)
+        ↓
+Action Parser → typed action JSON
+        ↓
+ActionPolicy preflight (bounds, tiers, package allowlist)
+        ↓
+SafeActionExecutor — [Kill Switch] [Safety Tiers] [Stuck Detection] [Audit Log]
+        ↓
+Accessibility API (tap / scroll / type / open)
 ```
 
-## Modules
+## Safety model
 
-| Module | File | Purpose |
-|--------|------|----------|
-| **Action Models** | `action/ActionModels.kt` | Typed actions with safety tiers |
-| **Tree Parser** | `parser/AccessibilityTreeParser.kt` | Accessibility tree → LLM text |
-| **Action Parser** | `parser/ActionParser.kt` | LLM JSON → typed actions |
-| **Safe Executor** | `action/SafeActionExecutor.kt` | Tiered safety + stuck detection |
-| **Audit Log** | `audit/AuditLog.kt` | SQLite audit trail (on-device only) |
-| **Encrypted Prefs** | `security/EncryptedPrefs.kt` | AES-256 encrypted settings |
-| **LLM Bridge** | `llm/LLMBridge.kt` | Abstraction + prompt builders |
-| **MediaPipe** | `llm/MediaPipeBridge.kt` | On-device LLM inference (TensorFlow Lite) |
-| **Ollama** | `llm/OllamaBridge.kt` | LAN LLM via OpenAI-compatible API |
-| **Voice Input** | `voice/VoiceInputManager.kt` | Vosk on-device STT |
-| **Plugin Loader** | `plugin/PluginLoader.kt` | APK plugin system |
-| **Vision Fallback** | `vision/VisionFallback.kt` | MediaPipe object detection |
-| **Overlay Bubble** | `service/OverlayBubbleService.kt` | Floating quick-access bubble |
-| **Main Activity** | `MainActivity.kt` | Compose UI (dashboard/audit/settings) |
-
-## Safety Model
+Every action is classified before execution. Policy is enforced in code, not by prompt.
 
 | Tier | Actions | Behavior |
 |------|---------|----------|
 | TIER 1 | scroll, swipe, back, home, wait, read | Auto-execute |
 | TIER 2 | tap, type (non-password), open app | Log + execute |
-| TIER 3 | type (password), send, delete | Require confirmation |
-| TIER 4 | install APK, grant permissions | **Blocked** |
+| TIER 3 | type (password), send, delete | Require explicit user confirmation |
+| TIER 4 | install APK, grant permissions | **Blocked — cannot be executed at all** |
 
-## Building
+Additional guarantees:
+
+- TIER_3 confirmation cannot be bypassed by any setting.
+- Coordinates, text input, scroll requests, wait durations, and package names are bounded before any Accessibility call.
+- Passwords and typed text are redacted from the audit log.
+- Vision detections can only become tap proposals on interactive elements with an allowlisted label — never auto-executed.
+
+## Modules
+
+| Module | File | Purpose |
+|--------|------|----------|
+| Action Models | `action/ActionModels.kt` | Typed actions with safety tiers |
+| Tree Parser | `parser/AccessibilityTreeParser.kt` | Accessibility tree → LLM text |
+| Action Parser | `parser/ActionParser.kt` | LLM JSON → typed actions |
+| Safe Executor | `action/SafeActionExecutor.kt` | Tiered safety + stuck detection |
+| Audit Log | `audit/AuditLog.kt` | SQLite audit trail (on-device only) |
+| Encrypted Prefs | `security/EncryptedPrefs.kt` | AES-256 encrypted settings |
+| LLM Bridge | `llm/LLMBridge.kt` | Abstraction + prompt builders |
+| MediaPipe | `llm/MediaPipeBridge.kt` | On-device LLM inference (TFLite) |
+| Ollama | `llm/OllamaBridge.kt` | LAN LLM via OpenAI-compatible API |
+| Voice Input | `voice/VoiceInputManager.kt` | Vosk on-device STT |
+| Plugin Loader | `plugin/PluginLoader.kt` | APK plugin system (manifest-validated) |
+| Vision Fallback | `vision/VisionFallback.kt` | MediaPipe object detection → proposals only |
+| Overlay Bubble | `service/OverlayBubbleService.kt` | Floating quick-access bubble |
+| Main Activity | `MainActivity.kt` | Compose UI (dashboard / audit / settings) |
+
+## Build
+
+Requires the Android SDK. From the repo root:
 
 ```bash
 cd android
@@ -50,61 +71,7 @@ cd android
 ./gradlew assemblePlayDebug     # Play Store flavor
 ```
 
-## Setup
-
-1. Enable Accessibility Service for AionOS in system settings
-2. (Optional) Download a Vosk model for voice input
-3. (Optional) Run Ollama on your LAN for stronger LLMs
-4. (Optional) Download a MediaPipe TFLite model for on-device inference
-
-## Dependencies
-
-- Kotlin 1.9+
-- Jetpack Compose
-- Ktor (Ollama client)
-- EncryptedSharedPreferences
-- Vosk (optional, voice)
-- MediaPipe Tasks (optional, on-device LLM + vision)
-
-## CI/CD Pipeline
-
-Automated workflows for building, testing, and releasing:
-
-### Workflows
-
-| Workflow | Trigger | Purpose |
-|----------|---------|----------|
-| **Build** | Push to `main`/`develop`, PRs | Compiles app, catches errors |
-| **Test** | Push to `main`/`develop`, PRs | Unit tests + lint checks |
-| **Release** | Tags `v*`, manual trigger | Release APK/AAB + GitHub Release |
-
-### Quick Start
-
-**View workflows:** Go to [Actions](https://github.com/Stijnman/aionos/actions) tab
-
-**Create a release:**
-```bash
-git tag v0.2.1-alpha
-git push origin v0.2.1-alpha
-```
-
-**Documentation:** See [.github/CI-CD-SETUP.md](.github/CI-CD-SETUP.md)
-
-## License
-
-MIT
-
-## Implemented feature set
-
-The current alpha includes the original continuation tasks plus remediation work for orchestration outcomes, remote-provider opt-in, privacy-safe action reporting, accessibility-node cleanup, bounded vision proposals, plugin manifest validation, model-download integrity, and service setup notifications. Screen capture requires explicit MediaProjection consent; captured frames are analyzed locally and recycled after one-shot vision analysis. Audit logs can be exported through the Storage Access Framework.
-
-The application remains local-first. OpenRouter is disabled unless the user selects it, stores a key in encrypted preferences, and explicitly enables remote-provider consent. The app does not claim that prompts are anonymized; callers must treat remote-provider transmission as disclosure of the selected prompt data.
-
-The project includes parser, action-policy, network-policy, vision, and Android instrumentation smoke-test coverage. The F-Droid workflow runs unit tests, lint, debug and release APK assembly, and an emulator smoke test.
-
-### Validation
-
-From `android/`, run:
+Validate locally (unit tests, lint, release build, instrumentation):
 
 ```bash
 ./gradlew testFdroidDebugUnitTest
@@ -114,12 +81,45 @@ From `android/`, run:
 ./gradlew connectedFdroidDebugAndroidTest
 ```
 
-Android SDK components must be installed locally or supplied by the CI runner. The Vosk model remains opt-in and is downloaded only after the user taps the download button in protected settings.
+The GitHub Actions workflow is the authoritative verification environment — it runs the same pipeline on an emulator.
 
-## 0.2.1 alpha remediation improvements
+## Setup on device
 
-The 0.2.1 alpha adds a centralized `ActionPolicy` preflight layer. It rejects TIER_4 actions and bounds coordinates, text input, scroll requests, wait durations, and Android package names before any Accessibility API call. TIER_3 actions always require confirmation; the setting cannot bypass that boundary. Password and typed-text contents are redacted from audit details. Ollama endpoints are validated before encrypted persistence, and embedded credentials are rejected.
+1. Install the APK, then enable the AionOS Accessibility Service in system settings.
+2. Optional: download a Vosk model for offline voice input (in-app, opt-in).
+3. Optional: run Ollama on your LAN and point AionOS at it for stronger models.
+4. Optional: download a MediaPipe TFLite model for fully offline inference.
 
-Vision fallback now has a confidence-gated proposal layer and an interactive-label allowlist; generic object detections cannot become taps. Proposals are reported to the user and are not executed automatically. Plugin dispatch requires an explicitly selected loaded plugin, a matching manifest package, a declared action, bounded parameter names, and bounded parameter values. Release packaging includes the required service metadata, model asset, XML theme, and icon resources.
+## Privacy posture
 
-The remediation also fixes fail-fast orchestration, single-collector voice lifecycle management, accessibility-node recycling, non-sensitive typed-input result messages, local-only cleartext Ollama validation, encrypted OpenRouter consent settings, atomic/checksummable Vosk installation, first-run setup notification delivery, and Android instrumentation scaffolding. Full APK, unit-test, lint, and emulator execution still requires an Android SDK; the GitHub Actions workflow is the authoritative verification environment.
+- Audit logs are SQLite, on-device, exportable via the Storage Access Framework.
+- OpenRouter (the only remote provider) is disabled by default. Enabling it requires entering a key (stored in encrypted preferences) and a separate explicit consent toggle. Prompts sent to it are not anonymized — treat enabling it as disclosure of the selected prompt data.
+- Screen capture for vision analysis requires explicit MediaProjection consent; frames are analyzed locally and recycled after one-shot analysis.
+- Cleartext Ollama endpoints are validated local-only; embedded credentials in endpoints are rejected.
+
+## CI/CD
+
+| Workflow | Trigger | Purpose |
+|----------|---------|----------|
+| Build | Push to `main`/`develop`, PRs | Compiles app, catches errors |
+| Test | Push to `main`/`develop`, PRs | Unit tests + lint |
+| Release | Tags `v*`, manual | Release APK/AAB + GitHub Release |
+
+Tag a release:
+
+```bash
+git tag v0.2.1-alpha
+git push origin v0.2.1-alpha
+```
+
+Setup details: [.github/CI-CD-SETUP.md](.github/CI-CD-SETUP.md)
+
+## Roadmap
+
+- Finish the draft multi-feature PR (SAF export, multi-language voice, widget, shortcuts)
+- Dependency modernization (Gradle 9, Vosk 0.3.75 — see open dependabot PRs)
+- Broader action vocabulary and per-app policies
+
+## License
+
+MIT
